@@ -97,7 +97,7 @@ Darwin departure boards look ahead a maximum of 120 minutes (`timeWindow`), and 
   "id": "rid from Darwin",
   "scheduledDeparture": "07:42",
   "expectedDeparture": "07:49",
-  "status": "late",
+  "status": "ontime",
   "minutesLate": 7,
   "cancelled": false,
   "cancelReason": null,
@@ -158,10 +158,11 @@ require_once __DIR__ . '/config.php';
    - `numRows` = 1 to 9 (the operation rejects 10 or more)
    - `timeWindow` = 120
    - `x-apikey` header carrying the API key
-4. Normalise each service (section 5 object). Calculations:
-   - **Status.** If `isCancelled`, status `cancelled`. If `etd` is "On time", status `ontime`. If `etd` is a time, compute minutes late against `std`, status `late` (or `ontime` if 0 or 1 minute, configurable). If `etd` is "Delayed", status `delayed` with no time. Overnight rollover must be handled (23:58 scheduled, 00:03 expected).
-   - **Arrival at the tab destination and duration.** Find the destination in the service's `subsequentLocations`, take its `etd` if present, otherwise `std`. Duration = that time minus scheduled departure, with midnight rollover.
-   - **Stops.** Count of calling points between Exeter St David's and the tab destination, excluding both ends.
+4. Normalise each service (section 5 object). `std`/`etd`/`sta`/`eta`/`atd` arrive as full ISO 8601 datetimes in local time (not the bare `HH:MM`/`"On time"` strings the legacy SOAP docs implied), so differences are computed from real `DateTimeImmutable` values — no midnight-rollover arithmetic needed, since the date is part of the value. Calculations:
+   - **Status.** If `isCancelled`, status `cancelled`. If there is no live forecast (`etd`/`atd` both absent), status `ontime` and the scheduled time is shown rather than guessing at a delay. Otherwise status is `ontime` with `minutesLate` set to the (non-negative) difference between `std` and the forecast/actual time — the frontend derives "Late by X mins" / "Due at" display from that number itself (`src/utils/status.js`), the backend doesn't emit a `late` status string.
+   - **Reason text.** `cancelReason`/`delayReason` come back from Darwin as reason-code objects (`{near, Value}`), not text — resolving a code to human-readable text needs a separate `GetReasonCode` lookup this project doesn't make, so these fields are `null` unless Darwin ever returns a plain string.
+   - **Arrival at the tab destination and duration.** Find the destination in the service's `subsequentLocations`, take its `etd`/`eta` if present, otherwise `std`/`sta`. Duration = that time minus scheduled departure.
+   - **Stops.** Count of genuine public calling points between Exeter St David's and the tab destination (entries with a `crs` and neither `isPass` nor `isOperational` set), excluding both ends. Darwin's `subsequentLocations` also includes passing locations and operational-only junction points (no `crs`, e.g. `NABTWJ`) that must be filtered out here.
    - **Final destination.** The last location of the service, which may be beyond the tab station.
    - **Platform.** Blank values become `null` and the frontend shows "TBC".
 5. Sort by scheduled departure, tag each with `section`, store in cache, return.
