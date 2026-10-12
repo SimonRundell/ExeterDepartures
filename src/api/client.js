@@ -1,11 +1,13 @@
 import axios from 'axios'
 
 /**
- * Base URL of the PHP API. Set VITE_API_BASE in development, for example
- * http://localhost/exeter-departures/api. In production the API sits beside the app.
+ * Base URL of the PHP API. In development this comes from `devApiBase` in
+ * .config.json (injected at dev-server start by vite.config.js), since Vite
+ * and the PHP API run on different ports. In production the API sits beside
+ * the built app, so a relative path is used.
  * @type {string}
  */
-const API_BASE = import.meta.env.VITE_API_BASE ?? './api'
+const API_BASE = import.meta.env.VITE_API_BASE || './api'
 
 /**
  * True when the page was opened with ?mock=1, which asks the API for fixture data.

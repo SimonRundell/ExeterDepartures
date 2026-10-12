@@ -20,8 +20,8 @@ Origin: Exeter St David's, CRS `EXD`.
 
 ## 2. Key decisions
 
-1. **Data source: the official National Rail Darwin feed, not page scraping.** The nationalrail.co.uk pages are rendered by JavaScript, are brittle to parse and their terms do not invite automated scraping. The Live Departure Boards Web Service (OpenLDBWS, Staff Version, via the Rail Data Marketplace) returns the same live data legitimately. A free access token is required (see section 9).
-2. **Server-side fetch.** The token must never reach the browser. React calls our PHP REST API with Axios, the PHP API calls Darwin and caches the result.
+1. **Data source: the official National Rail Darwin feed, not page scraping.** The nationalrail.co.uk pages are rendered by JavaScript, are brittle to parse and their terms do not invite automated scraping. The Live Departure Boards Staff Web Service (LDBSVWS), subscribed to as an API product on the Rail Data Marketplace, returns the same live data legitimately as plain JSON over HTTPS. A free API key is required (see section 9).
+2. **Server-side fetch.** The API key must never reach the browser. React calls our PHP REST API with Axios, the PHP API calls Darwin and caches the result.
 3. **Two sections per tab:** Morning (before 09:00) and Afternoon (after 16:00). See the limitation in section 5.
 4. **Kiosk behaviour:** tabs auto-rotate, with a visible progress indicator, and a click or touch pauses rotation briefly.
 5. **Hosting:** Hostinger runs the PHP API and the built React app. The Pi only runs a browser.
@@ -45,7 +45,7 @@ No database is required. The API is stateless apart from a short-lived file cach
 ```
 exeter-departures/
   .htaccess                 root rewrite rules and .config.json block
-  .config.json              token, origin, destinations, timings (never served)
+  .config.json              API key, origin, destinations, timings (never served)
   .config.example.json      safe template for the repo
   index.html
   package.json
@@ -69,7 +69,7 @@ exeter-departures/
   api/
     cors.php                shared CORS, included first in every endpoint
     config.php              loads and validates .config.json
-    ldbws.php               Darwin SOAP client wrapper
+    ldbws.php               Darwin LDBSVWS REST client
     cache.php               tiny file cache with TTL
     departures.php          GET ?dest=EXM
     destinations.php        GET list of configured tabs
@@ -94,7 +94,7 @@ Darwin departure boards look ahead a maximum of 120 minutes (`timeWindow`), and 
 
 ```json
 {
-  "id": "serviceID from Darwin",
+  "id": "rid from Darwin",
   "scheduledDeparture": "07:42",
   "expectedDeparture": "07:49",
   "status": "late",
@@ -152,14 +152,15 @@ require_once __DIR__ . '/config.php';
 
 1. Validate `dest` against the configured destination list. Reject anything else with 400.
 2. Check the file cache. If the entry is younger than `cacheSeconds` (default 30), return it.
-3. Call `GetDepBoardWithDetails` with:
-   - `crs` = `EXD`
+3. Call `GetDepBoardWithDetails/{crs}/{time}` (a GET request, `time` formatted `yyyyMMddTHHmmss`) with:
+   - `crs` path segment = `EXD`
    - `filterCrs` = the destination CRS, `filterType` = `to`
-   - `numRows` = 10 to 15
-   - `timeWindow` = 120, `timeOffset` = 0
+   - `numRows` = 1 to 9 (the operation rejects 10 or more)
+   - `timeWindow` = 120
+   - `x-apikey` header carrying the API key
 4. Normalise each service (section 5 object). Calculations:
    - **Status.** If `isCancelled`, status `cancelled`. If `etd` is "On time", status `ontime`. If `etd` is a time, compute minutes late against `std`, status `late` (or `ontime` if 0 or 1 minute, configurable). If `etd` is "Delayed", status `delayed` with no time. Overnight rollover must be handled (23:58 scheduled, 00:03 expected).
-   - **Arrival at the tab destination and duration.** Find the destination in the service's `subsequentCallingPoints`, take its `et` if present, otherwise `st`. Duration = that time minus scheduled departure, with midnight rollover.
+   - **Arrival at the tab destination and duration.** Find the destination in the service's `subsequentLocations`, take its `etd` if present, otherwise `std`. Duration = that time minus scheduled departure, with midnight rollover.
    - **Stops.** Count of calling points between Exeter St David's and the tab destination, excluding both ends.
    - **Final destination.** The last location of the service, which may be beyond the tab station.
    - **Platform.** Blank values become `null` and the frontend shows "TBC".
@@ -168,8 +169,8 @@ require_once __DIR__ . '/config.php';
 
 ### 6.3 Other files
 
-- `config.php`: reads `.config.json` from one directory above `/api` where possible, falls back to the project root, validates required keys, and fails with a generic message (never echoing the token).
-- `ldbws.php`: wraps `SoapClient`. Requires the PHP `soap` extension (check on Hostinger). The token goes in the SOAP header `AccessToken`. If the extension is unavailable, fall back to a hand-built SOAP envelope sent with cURL.
+- `config.php`: reads `.config.json` from one directory above `/api` where possible, falls back to the project root, validates required keys, and fails with a generic message (never echoing the API key).
+- `ldbws.php`: a small REST client built on cURL. LDBSVWS is accessed as a plain JSON-over-HTTPS API product on the Rail Data Marketplace, authenticated with an `x-apikey` header — no SOAP extension or hand-built XML envelope involved.
 - `cache.php`: JSON files in `api/cache/`, keyed by destination, atomic write. `api/cache/.htaccess` contains `Require all denied`.
 - `health.php`: returns server time and cache age per destination, no secrets.
 
@@ -182,8 +183,8 @@ Five destinations polled every 30 seconds from one Pi is about 10 upstream calls
 ```json
 {
   "darwin": {
-    "token": "REPLACE_WITH_TOKEN",
-    "endpoint": "https://lite.realtime.nationalrail.co.uk/OpenLDBWS/ldb12.asmx"
+    "apiKey": "REPLACE_WITH_API_KEY",
+    "endpoint": "https://api1.raildata.org.uk/1010-live-departure-board---staff-version1_0/LDBSVWS/api/20220120"
   },
   "origin": { "crs": "EXD", "name": "Exeter St David's" },
   "destinations": [
@@ -200,6 +201,7 @@ Five destinations polled every 30 seconds from one Pi is about 10 upstream calls
   },
   "cacheSeconds": 30,
   "allowedOrigins": ["https://YOUR-PRODUCTION-DOMAIN"],
+  "devApiBase": "http://localhost/api",
   "ui": {
     "pollSeconds": 30,
     "rotateSeconds": 20,
@@ -209,7 +211,7 @@ Five destinations polled every 30 seconds from one Pi is about 10 upstream calls
 }
 ```
 
-The frontend must not read this file directly. `api/destinations.php` returns only the non-secret parts (destinations, windows, ui) so the Pi display picks up changes without a rebuild. Verify the exact endpoint URL and token process on the Rail Data Marketplace when registering, as these change from time to time.
+The frontend must not read this file directly over HTTP — it stays blocked by `.htaccess` in both dev and production. The one exception is `devApiBase`, which `vite.config.js` reads from disk (Node, at `vite dev` start) and bakes into the dev bundle, since Vite's dev server and the PHP API run on different ports; production builds ignore it and default to a relative path. `api/destinations.php` returns the rest of the non-secret parts (destinations, windows, ui) over HTTP so the Pi display picks up changes without a rebuild. Verify the exact endpoint URL and API key process on the Rail Data Marketplace when subscribing, as these change from time to time.
 
 ## 8. Frontend design
 
@@ -248,14 +250,15 @@ One stylesheet. Use CSS custom properties for colours and spacing, a `clamp()` b
 
 ## 9. Credentials and data licensing
 
-1. Register on the Rail Data Marketplace (raildata.org.uk) and subscribe to the Live Departure Board (Staff Version) feed. Registration is free.
-2. Store the token in `.config.json` only.
-3. Review the feed's terms and National Rail's attribution requirements on registration and follow them. The footer must credit National Rail as the source.
+1. Register on the Rail Data Marketplace (raildata.org.uk) and subscribe to the "Live Departure Board - Staff Version" API product. Registration is free.
+2. The product is accessed over plain REST/JSON, not SOAP. Authentication is a single `x-apikey` header — check the product's "Try it" panel on the portal to confirm which of the issued credentials (typically the Consumer key) is the value that belongs there.
+3. Store the API key in `.config.json` only.
+4. Review the feed's terms and National Rail's attribution requirements on registration and follow them. The footer must credit National Rail as the source.
 
 ## 10. Security
 
 - `.config.json` must never be served. The root `.htaccess` below includes an explicit deny block.
-- The token exists only on the server. No token in the Vite build.
+- The API key exists only on the server. No API key in the Vite build.
 - `dest` is validated against a whitelist, never interpolated into anything unchecked.
 - No user input is written to disk. Cache filenames come from the whitelist.
 - Add `Header set X-Content-Type-Options "nosniff"` and a `Referrer-Policy` header in `.htaccess`.
@@ -289,9 +292,9 @@ Test after deployment by requesting `/.config.json` in a browser. It must return
 Per the standard Laragon setup:
 
 - Apache and PHP on `http://localhost/` via Laragon, project placed so `/api` resolves there.
-- Vite serves only the React frontend on its own port. No Vite proxy. The Axios base URL comes from an environment value, for example `VITE_API_BASE=http://localhost/exeter-departures/api`.
+- Vite serves only the React frontend on its own port. No Vite proxy. The Axios base URL comes from `devApiBase` in `.config.json`, for example `http://localhost/exeter-departures/api` — `vite.config.js` reads it at dev-server start and injects it into the bundle. There is no separate `.env` file.
 - If port 5173 is already in use, the dev server is already running. Use it for testing and do not kill it and start another.
-- Provide a mock mode (`?mock=1` on the API, or a fixtures file) so the UI can be developed and tested without a token, and to cover late, cancelled, no platform, non-stop, empty and midnight rollover cases.
+- Provide a mock mode (`?mock=1` on the API, or a fixtures file) so the UI can be developed and tested without an API key, and to cover late, cancelled, no platform, non-stop, empty and midnight rollover cases.
 
 ## 12. Deployment
 
@@ -299,7 +302,7 @@ Per the standard Laragon setup:
 
 1. `npm run build`.
 2. Upload the contents of `dist/` to the web root, plus the `/api` folder, `.htaccess` and `.config.json`.
-3. Confirm the PHP `soap` extension is enabled (or rely on the cURL fallback), and that `api/cache/` is writable.
+3. Confirm the PHP `curl` extension is enabled, and that `api/cache/` is writable.
 4. Visit `/api/health.php` and `/api/departures.php?dest=EXM` to verify before pointing the Pi at it.
 
 **Raspberry Pi (kiosk)**
@@ -312,7 +315,7 @@ Per the standard Laragon setup:
 
 ## 13. Testing and acceptance
 
-Unit tests (Vitest) for `status.js` and `timeWindows.js`. PHP normaliser tests against saved Darwin XML fixtures.
+Unit tests (Vitest) for `status.js` and `timeWindows.js`. PHP normaliser tests against a saved Darwin JSON fixture.
 
 Acceptance checklist:
 

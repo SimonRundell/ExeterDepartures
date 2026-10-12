@@ -1,8 +1,7 @@
 {
   "darwin": {
-    "token": "REPLACE_WITH_TOKEN",
-    "endpoint": "https://lite.realtime.nationalrail.co.uk/OpenLDBWS/ldb12.asmx",
-    "namespace": "http://thalesgroup.com/RTTI/2021-11-01/ldb/"
+    "apiKey": "REPLACE_WITH_API_KEY",
+    "endpoint": "https://api1.raildata.org.uk/1010-live-departure-board---staff-version1_0/LDBSVWS/api/20220120"
   },
   "origin": { "crs": "EXD", "name": "Exeter St David's" },
   "destinations": [
@@ -18,7 +17,8 @@
     "afternoonLiveFrom": "14:00"
   },
   "cacheSeconds": 30,
-  "allowedOrigins": ["https://YOUR-PRODUCTION-DOMAIN"],
+  "allowedOrigins": ["https://YOUR-PRODUCTION-DOMAIN", "http://localhost"],
+  "devApiBase": "http://localhost/api",
   "ui": {
     "pollSeconds": 30,
     "rotateSeconds": 20,

@@ -4,7 +4,6 @@
  *
  * @license CC BY-NC-SA 4.0
  */
-require_once __DIR__ . '/../api/ldbws.php';
 require_once __DIR__ . '/../api/normalise.php';
 date_default_timezone_set('Europe/London');
 
@@ -29,8 +28,7 @@ function check(string $name, $actual, $expected): void
 }
 
 $config = ['windows' => ['morningEnd' => '09:00', 'afternoonStart' => '16:00']];
-$xml = simplexml_load_string(stripNamespaces(file_get_contents(__DIR__ . '/../api/fixtures/board.xml')));
-$board = extractBoard($xml);
+$board = json_decode((string) file_get_contents(__DIR__ . '/../api/fixtures/board.json'), true);
 $out = normaliseBoard($board, ['crs' => 'PLY', 'name' => 'Plymouth'], $config);
 $byId = [];
 foreach ($out['services'] as $s) {

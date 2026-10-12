@@ -92,26 +92,27 @@ function sectionFor(string $std, array $windows): string
 }
 
 /**
- * Normalise one Darwin service element.
+ * Normalise one Darwin ServiceItemWithLocations entry.
  *
- * @param SimpleXMLElement $svc     The service element.
- * @param string           $destCrs CRS of the tab destination.
- * @param array            $config  Validated config.
+ * @param array  $svc     The decoded service object (trainServices[n]).
+ * @param string $destCrs CRS of the tab destination.
+ * @param array  $config  Validated config.
  * @return array The normalised service.
  */
-function normaliseService(SimpleXMLElement $svc, string $destCrs, array $config): array
+function normaliseService(array $svc, string $destCrs, array $config): array
 {
-    $std = (string) $svc->std;
-    $etd = (string) $svc->etd;
-    $cancelled = strtolower((string) $svc->isCancelled) === 'true' || strcasecmp($etd, 'Cancelled') === 0;
+    $std = (string) ($svc['std'] ?? '');
+    $etd = (string) ($svc['etd'] ?? '');
+    $cancelled = !empty($svc['isCancelled']) || strcasecmp($etd, 'Cancelled') === 0;
     $status = computeStatus($std, $etd, $cancelled, 1);
 
     $points = [];
-    foreach ($svc->xpath('subsequentCallingPoints/callingPointList[1]/callingPoint') ?: [] as $cp) {
+    foreach ($svc['subsequentLocations'] ?? [] as $loc) {
+        $etdLoc = (string) ($loc['etd'] ?? '');
         $points[] = [
-            'name' => (string) $cp->locationName,
-            'crs' => (string) $cp->crs,
-            'time' => (string) ($cp->et ?? '') !== '' && toMinutes((string) $cp->et) !== null ? (string) $cp->et : (string) $cp->st,
+            'name' => (string) ($loc['locationName'] ?? ''),
+            'crs' => (string) ($loc['crs'] ?? ''),
+            'time' => $etdLoc !== '' && toMinutes($etdLoc) !== null ? $etdLoc : (string) ($loc['std'] ?? ''),
         ];
     }
 
@@ -132,24 +133,24 @@ function normaliseService(SimpleXMLElement $svc, string $destCrs, array $config)
         $between = [];
     }
 
-    $destNames = $svc->xpath('destination/location/locationName');
-    $final = $destNames ? (string) end($destNames) : ($points ? end($points)['name'] : '');
-    $platform = trim((string) $svc->platform);
+    $destinations = $svc['destination'] ?? [];
+    $final = $destinations ? (string) (end($destinations)['locationName'] ?? '') : ($points ? end($points)['name'] : '');
+    $platform = trim((string) ($svc['platform'] ?? ''));
 
     return [
-        'id' => (string) $svc->serviceID,
+        'id' => (string) ($svc['rid'] ?? $svc['uid'] ?? $svc['trainid'] ?? ''),
         'scheduledDeparture' => $std,
         'expectedDeparture' => $status['expected'],
         'status' => $status['status'],
         'minutesLate' => $status['minutesLate'],
         'cancelled' => $status['status'] === 'cancelled',
-        'cancelReason' => trim((string) $svc->cancelReason) ?: null,
-        'delayReason' => trim((string) $svc->delayReason) ?: null,
+        'cancelReason' => trim((string) ($svc['cancelReason'] ?? '')) ?: null,
+        'delayReason' => trim((string) ($svc['delayReason'] ?? '')) ?: null,
         'platform' => $platform !== '' ? $platform : null,
-        'platformConfirmed' => $platform !== '' && strtolower((string) $svc->platformIsHidden) !== 'true',
+        'platformConfirmed' => $platform !== '' && empty($svc['platformIsHidden']),
         'finalDestination' => $final,
-        'operator' => (string) $svc->operator,
-        'operatorCode' => (string) $svc->operatorCode,
+        'operator' => (string) ($svc['operator'] ?? ''),
+        'operatorCode' => (string) ($svc['operatorCode'] ?? ''),
         'arrivalAtTabDestination' => $arrival,
         'durationMinutes' => $duration,
         'stopsBetween' => $reached ? count($between) : null,
@@ -161,15 +162,15 @@ function normaliseService(SimpleXMLElement $svc, string $destCrs, array $config)
 /**
  * Normalise a whole board.
  *
- * @param SimpleXMLElement $board   GetStationBoardResult element.
- * @param array            $dest    Destination entry (crs, name).
- * @param array            $config  Validated config.
+ * @param array $board  Decoded StationBoardWithDetails object.
+ * @param array $dest   Destination entry (crs, name).
+ * @param array $config Validated config.
  * @return array Response body (services sorted, plus NRCC messages).
  */
-function normaliseBoard(SimpleXMLElement $board, array $dest, array $config): array
+function normaliseBoard(array $board, array $dest, array $config): array
 {
     $services = [];
-    foreach ($board->xpath('trainServices/service') ?: [] as $svc) {
+    foreach ($board['trainServices'] ?? [] as $svc) {
         $services[] = normaliseService($svc, $dest['crs'], $config);
     }
     // Sort by scheduled time, treating early-hours services as after late-night ones.
@@ -180,8 +181,8 @@ function normaliseBoard(SimpleXMLElement $board, array $dest, array $config): ar
         return $ka <=> $kb;
     });
     $messages = [];
-    foreach ($board->xpath('nrccMessages/message') ?: [] as $msg) {
-        $messages[] = trim(strip_tags(html_entity_decode((string) $msg)));
+    foreach ($board['nrccMessages'] ?? [] as $msg) {
+        $messages[] = trim(strip_tags(html_entity_decode((string) ($msg['xhtmlMessage'] ?? ''))));
     }
     return ['services' => $services, 'messages' => $messages];
 }

@@ -1,6 +1,6 @@
 <?php
 /**
- * Mock departure data so the UI can run without a Darwin token.
+ * Mock departure data so the UI can run without a Darwin API key.
  * Covers on time, late, very late, cancelled, delayed, no platform, non-stop
  * and a midnight rollover.
  *
@@ -53,34 +53,38 @@ function mockBoard(array $dest, array $config): array
             $std = fmtMinutes($dep);
             $late = str_starts_with($c['etd'], '+') ? (int) substr($c['etd'], 1) : 0;
             $etd = $late ? fmtMinutes($dep + $late) : $c['etd'];
-            $svc = new SimpleXMLElement('<service/>');
-            $svc->addChild('std', $std);
-            $svc->addChild('etd', $etd);
-            $svc->addChild('platform', $c['plat']);
-            $svc->addChild('operator', 'Great Western Railway');
-            $svc->addChild('operatorCode', 'GW');
-            $svc->addChild('serviceID', 'MOCK' . $s . $i . $dest['crs']);
+            $svc = [
+                'std' => $std,
+                'etd' => $etd,
+                'platform' => $c['plat'],
+                'operator' => 'Great Western Railway',
+                'operatorCode' => 'GW',
+                'rid' => 'MOCK' . $s . $i . $dest['crs'],
+                'destination' => [['locationName' => $final]],
+            ];
             if ($c['etd'] === 'Cancelled') {
-                $svc->addChild('isCancelled', 'true');
-                $svc->addChild('cancelReason', 'This train has been cancelled because of a shortage of train crew');
+                $svc['isCancelled'] = true;
+                $svc['cancelReason'] = 'This train has been cancelled because of a shortage of train crew';
             }
             if ($c['etd'] === 'Delayed' || $late > 10) {
-                $svc->addChild('delayReason', 'A fault with the signalling system');
+                $svc['delayReason'] = 'A fault with the signalling system';
             }
-            $svc->addChild('destination')->addChild('location')->addChild('locationName', $final);
-            $list = $svc->addChild('subsequentCallingPoints')->addChild('callingPointList');
+            $locations = [];
             for ($k = 0; $k < $c['stops']; $k++) {
-                $cp = $list->addChild('callingPoint');
-                $cp->addChild('locationName', $stopNames[$k % 4]);
-                $cp->addChild('crs', 'ZZ' . $k);
-                $cp->addChild('st', fmtMinutes($dep + 6 + $k * 5));
-                $cp->addChild('et', 'On time');
+                $locations[] = [
+                    'locationName' => $stopNames[$k % 4],
+                    'crs' => 'ZZ' . $k,
+                    'std' => fmtMinutes($dep + 6 + $k * 5),
+                    'etd' => 'On time',
+                ];
             }
-            $cp = $list->addChild('callingPoint');
-            $cp->addChild('locationName', $dest['name']);
-            $cp->addChild('crs', $dest['crs']);
-            $cp->addChild('st', fmtMinutes($dep + $c['dur']));
-            $cp->addChild('et', fmtMinutes($dep + $c['dur'] + $late));
+            $locations[] = [
+                'locationName' => $dest['name'],
+                'crs' => $dest['crs'],
+                'std' => fmtMinutes($dep + $c['dur']),
+                'etd' => fmtMinutes($dep + $c['dur'] + $late),
+            ];
+            $svc['subsequentLocations'] = $locations;
             $services[] = normaliseService($svc, $dest['crs'], $config);
         }
     }

@@ -19,7 +19,6 @@ foreach ($config['destinations'] as $dest) {
 echo json_encode([
     'ok' => true,
     'serverTime' => date('c'),
-    'soapExtension' => class_exists('SoapClient'),
     'curl' => function_exists('curl_init'),
     'cacheWritable' => is_writable(__DIR__ . '/cache'),
     'cacheAgeSeconds' => $ages,

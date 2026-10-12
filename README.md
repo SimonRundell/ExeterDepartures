@@ -2,9 +2,9 @@
 
 A wall display for a kiosk browser (Raspberry Pi) showing live trains from Exeter St David's to Exmouth, Plymouth, Okehampton, Barnstaple and Tiverton Parkway. One tab per destination, auto-rotating, with a card per service. See `DESIGN.md` for the full brief.
 
-Train information comes from National Rail's Darwin Live Departure Boards feed. The token stays on the server; the browser only talks to the PHP API in `/api`.
+Train information comes from National Rail's Darwin Live Departure Boards feed. The API key stays on the server; the browser only talks to the PHP API in `/api`.
 
-## Quick start (local, no token needed)
+## Quick start (local, no API key needed)
 
 1. Copy `.config.example.json` to `.config.json` (already done in a fresh checkout of this folder).
 2. Serve the project root with PHP. Either use Laragon (Apache on `http://localhost/`, project reachable as `/exeter-departures/`), or for a quick test:
@@ -13,7 +13,7 @@ Train information comes from National Rail's Darwin Live Departure Boards feed. 
    php -S localhost:8081 -t .
    ```
 
-3. Copy `.env.example` to `.env.development` and set `VITE_API_BASE` to match, for example `http://localhost:8081/api`.
+3. In `.config.json`, set `devApiBase` to match, for example `http://localhost:8081/api`. This is the only place the frontend's API base URL is configured — there's no separate `.env` file.
 4. Start Vite (if port 5173 is already in use, the dev server is already running, so just use it):
 
    ```bash
@@ -27,17 +27,17 @@ The PHP built-in server ignores `.htaccess`, so `/.config.json` will be readable
 
 ## Real data
 
-1. Register at <https://raildata.org.uk> and subscribe to the Live Departure Board (Staff Version) feed.
-2. Put the token in `.config.json` under `darwin.token`. Check the endpoint and SOAP namespace on the Rail Data Marketplace and update `darwin.endpoint` and `darwin.namespace` if they differ from the example.
+1. Register at <https://raildata.org.uk> and subscribe to the "Live Departure Board - Staff Version" API product.
+2. The product is REST/JSON, authenticated with an `x-apikey` header. Put the key in `.config.json` under `darwin.apiKey`, and check `darwin.endpoint` against the exact URL shown on the Rail Data Marketplace product page if it differs from the example.
 3. Visit `/api/health.php` then `/api/departures.php?dest=EXM`.
 
-The SOAP request is built by hand and sent with cURL, so the PHP `soap` extension is not required.
+Requests are plain GETs sent with cURL, so no PHP `soap` extension is required — just `curl`.
 
 ## Tests
 
 ```bash
 npm test                          # Vitest: status and time window logic
-php tests/normalise_test.php      # PHP normaliser against a saved Darwin XML fixture
+php tests/normalise_test.php      # PHP normaliser against a saved Darwin JSON fixture
 npm run lint
 ```
 

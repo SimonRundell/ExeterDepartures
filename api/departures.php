@@ -57,7 +57,7 @@ if ($entry !== null && $age < $config['cacheSeconds']) {
 }
 
 try {
-    $board = fetchDepartureBoard($config, $config['origin']['crs'], $dest['crs'], 15);
+    $board = fetchDepartureBoard($config, $config['origin']['crs'], $dest['crs'], 9);
     $body = normaliseBoard($board, $dest, $config);
     cacheWrite($key, $body);
     echo json_encode(envelope($dest, $body, false, false, time()));

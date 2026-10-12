@@ -1,0 +1,37 @@
+{
+  "generatedAt": "2026-10-12T23:30:00+01:00",
+  "locationName": "Exeter St Davids",
+  "crs": "EXD",
+  "nrccMessages": [
+    { "xhtmlMessage": "Disruption at <a href=\"x\">Plymouth</a>." }
+  ],
+  "trainServices": [
+    {
+      "rid": "AAA1",
+      "std": "23:58",
+      "etd": "00:03",
+      "platform": "3",
+      "operator": "Great Western Railway",
+      "operatorCode": "GW",
+      "destination": [{ "locationName": "Paignton" }],
+      "subsequentLocations": [
+        { "locationName": "St Thomas", "crs": "SDW", "std": "00:01", "etd": "On time" },
+        { "locationName": "Plymouth", "crs": "PLY", "std": "00:40", "etd": "00:45" },
+        { "locationName": "Paignton", "crs": "PGN", "std": "01:20", "etd": "On time" }
+      ]
+    },
+    {
+      "rid": "BBB2",
+      "std": "23:30",
+      "etd": "Cancelled",
+      "isCancelled": true,
+      "cancelReason": "Cancelled due to crew shortage",
+      "operator": "Great Western Railway",
+      "operatorCode": "GW",
+      "destination": [{ "locationName": "Plymouth" }],
+      "subsequentLocations": [
+        { "locationName": "Plymouth", "crs": "PLY", "std": "00:10", "etd": "Cancelled" }
+      ]
+    }
+  ]
+}
