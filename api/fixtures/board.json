@@ -8,29 +8,30 @@
   "trainServices": [
     {
       "rid": "AAA1",
-      "std": "23:58",
-      "etd": "00:03",
+      "std": "2026-10-12T23:58:00",
+      "etd": "2026-10-13T00:03:00",
       "platform": "3",
       "operator": "Great Western Railway",
       "operatorCode": "GW",
       "destination": [{ "locationName": "Paignton" }],
       "subsequentLocations": [
-        { "locationName": "St Thomas", "crs": "SDW", "std": "00:01", "etd": "On time" },
-        { "locationName": "Plymouth", "crs": "PLY", "std": "00:40", "etd": "00:45" },
-        { "locationName": "Paignton", "crs": "PGN", "std": "01:20", "etd": "On time" }
+        { "locationName": "St Thomas", "crs": "SDW", "isPass": false, "std": "2026-10-13T00:01:00", "etd": "2026-10-13T00:01:00" },
+        { "locationName": "WESTJUNC", "tiploc": "WESTJUNC", "isOperational": true, "std": "2026-10-13T00:05:00" },
+        { "locationName": "Newton Abbot", "crs": "NAB", "isPass": true, "std": "2026-10-13T00:10:00", "etd": "2026-10-13T00:10:00" },
+        { "locationName": "Plymouth", "crs": "PLY", "isPass": false, "std": "2026-10-13T00:40:00", "etd": "2026-10-13T00:45:00" },
+        { "locationName": "Paignton", "crs": "PGN", "isPass": false, "std": "2026-10-13T01:20:00", "etd": "2026-10-13T01:20:00" }
       ]
     },
     {
       "rid": "BBB2",
-      "std": "23:30",
-      "etd": "Cancelled",
+      "std": "2026-10-12T23:30:00",
       "isCancelled": true,
       "cancelReason": "Cancelled due to crew shortage",
       "operator": "Great Western Railway",
       "operatorCode": "GW",
       "destination": [{ "locationName": "Plymouth" }],
       "subsequentLocations": [
-        { "locationName": "Plymouth", "crs": "PLY", "std": "00:10", "etd": "Cancelled" }
+        { "locationName": "Plymouth", "crs": "PLY", "isPass": false, "std": "2026-10-13T00:10:00" }
       ]
     }
   ]

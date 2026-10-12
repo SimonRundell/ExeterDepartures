@@ -2,22 +2,11 @@
 /**
  * Mock departure data so the UI can run without a Darwin API key.
  * Covers on time, late, very late, cancelled, delayed, no platform, non-stop
- * and a midnight rollover.
+ * and a midnight rollover. Builds the same shape Darwin's REST API returns:
+ * full ISO datetimes for std/etd, not bare "HH:MM" strings.
  *
  * @license CC BY-NC-SA 4.0
  */
-
-/**
- * Format minutes since midnight as HH:MM, wrapping past midnight.
- *
- * @param int $m Minutes.
- * @return string Time string.
- */
-function fmtMinutes(int $m): string
-{
-    $m = (($m % 1440) + 1440) % 1440;
-    return sprintf('%02d:%02d', intdiv($m, 60), $m % 60);
-}
 
 /**
  * Build mock services for a destination, starting from the current time.
@@ -28,7 +17,8 @@ function fmtMinutes(int $m): string
  */
 function mockBoard(array $dest, array $config): array
 {
-    $now = toMinutes(date('H:i'));
+    $now = new DateTimeImmutable('now', new DateTimeZone('Europe/London'));
+    $today = $now->setTime(0, 0);
     $finals = ['EXM' => 'Exmouth', 'PLY' => 'Penzance', 'OKE' => 'Okehampton', 'BNP' => 'Barnstaple', 'TVP' => 'Taunton'];
     $final = $finals[$dest['crs']] ?? $dest['name'];
     $stopNames = ['St Thomas', 'Newton Abbot', 'Totnes', 'Ivybridge'];
@@ -41,21 +31,19 @@ function mockBoard(array $dest, array $config): array
         ['off' => 83, 'etd' => '+1',      'plat' => '2', 'stops' => 2, 'dur' => 31],
         ['off' => 98, 'etd' => 'On time', 'plat' => '1', 'stops' => 0, 'dur' => 22],
     ];
+    $nowMinutes = ((int) $now->format('H')) * 60 + (int) $now->format('i');
     // Spread cases over a day boundary-friendly range: also seed afternoon times.
-    $starts = [$now, 16 * 60 - 10, 23 * 60 + 40];
-    $services = [];
+    $starts = [$nowMinutes, 16 * 60 - 10, 23 * 60 + 40];
+    $raw = [];
     foreach ($starts as $s => $start) {
         foreach ($cases as $i => $c) {
             if ($s > 0 && $i > 2) {
                 continue;
             }
-            $dep = $start + $c['off'];
-            $std = fmtMinutes($dep);
+            $dep = $today->modify('+' . ($start + $c['off']) . ' minutes');
             $late = str_starts_with($c['etd'], '+') ? (int) substr($c['etd'], 1) : 0;
-            $etd = $late ? fmtMinutes($dep + $late) : $c['etd'];
             $svc = [
-                'std' => $std,
-                'etd' => $etd,
+                'std' => $dep->format('Y-m-d\TH:i:s'),
                 'platform' => $c['plat'],
                 'operator' => 'Great Western Railway',
                 'operatorCode' => 'GW',
@@ -65,29 +53,40 @@ function mockBoard(array $dest, array $config): array
             if ($c['etd'] === 'Cancelled') {
                 $svc['isCancelled'] = true;
                 $svc['cancelReason'] = 'This train has been cancelled because of a shortage of train crew';
-            }
-            if ($c['etd'] === 'Delayed' || $late > 10) {
+            } elseif ($c['etd'] === 'Delayed') {
                 $svc['delayReason'] = 'A fault with the signalling system';
+                // No etd: an explicit "known delay, no estimate yet" case.
+            } else {
+                $svc['etd'] = $dep->modify("+{$late} minutes")->format('Y-m-d\TH:i:s');
+                if ($late > 10) {
+                    $svc['delayReason'] = 'A fault with the signalling system';
+                }
             }
             $locations = [];
             for ($k = 0; $k < $c['stops']; $k++) {
+                $stopTime = $dep->modify('+' . (6 + $k * 5) . ' minutes');
                 $locations[] = [
                     'locationName' => $stopNames[$k % 4],
                     'crs' => 'ZZ' . $k,
-                    'std' => fmtMinutes($dep + 6 + $k * 5),
-                    'etd' => 'On time',
+                    'std' => $stopTime->format('Y-m-d\TH:i:s'),
+                    'etd' => $stopTime->format('Y-m-d\TH:i:s'),
                 ];
             }
+            $destTime = $dep->modify('+' . $c['dur'] . ' minutes');
             $locations[] = [
                 'locationName' => $dest['name'],
                 'crs' => $dest['crs'],
-                'std' => fmtMinutes($dep + $c['dur']),
-                'etd' => fmtMinutes($dep + $c['dur'] + $late),
+                'std' => $destTime->format('Y-m-d\TH:i:s'),
+                'etd' => $destTime->modify("+{$late} minutes")->format('Y-m-d\TH:i:s'),
             ];
             $svc['subsequentLocations'] = $locations;
-            $services[] = normaliseService($svc, $dest['crs'], $config);
+            $raw[] = $svc;
         }
     }
-    usort($services, fn($a, $b) => toMinutes($a['scheduledDeparture']) <=> toMinutes($b['scheduledDeparture']));
+    usort($raw, fn(array $a, array $b): int => strcmp((string) $a['std'], (string) $b['std']));
+    $services = [];
+    foreach ($raw as $svc) {
+        $services[] = normaliseService($svc, $dest['crs'], $config);
+    }
     return ['services' => $services, 'messages' => ['Mock data in use. These are not real trains.']];
 }

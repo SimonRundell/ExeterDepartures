@@ -1,94 +1,127 @@
 <?php
 /**
- * Converts a Darwin board into the normalised service objects the UI uses.
- * Pure functions, no I/O, so they can be tested against saved XML.
+ * Converts a Darwin StationBoardWithDetails object into the normalised
+ * service objects the UI uses. Pure functions, no I/O, so they can be
+ * tested against a saved JSON fixture.
+ *
+ * Darwin's REST API returns std/etd/sta/eta/atd/ata as full ISO 8601
+ * datetimes in local (Europe/London) time, not the bare "HH:MM"/"On time"
+ * strings the legacy SOAP service used, so differences are computed from
+ * real DateTime objects rather than a minutes-since-midnight heuristic.
  *
  * @license CC BY-NC-SA 4.0
  */
 
 /**
- * Convert "HH:MM" to minutes since midnight.
+ * Parse a Darwin ISO datetime string.
  *
- * @param string $hhmm Time string.
- * @return int|null Minutes, or null if not a valid time.
+ * @param mixed $value Raw value from the API, or null/absent.
+ * @return DateTimeImmutable|null Parsed datetime, or null if absent/invalid.
  */
-function toMinutes(string $hhmm): ?int
+function parseDarwinTime($value): ?DateTimeImmutable
 {
-    if (!preg_match('/^(\d{1,2}):(\d{2})/', trim($hhmm), $m)) {
+    if (!is_string($value) || $value === '') {
         return null;
     }
-    return ((int) $m[1]) * 60 + (int) $m[2];
+    try {
+        return new DateTimeImmutable($value, new DateTimeZone('Europe/London'));
+    } catch (Exception $e) {
+        return null;
+    }
 }
 
 /**
- * Minutes from $from to $to, allowing for passing midnight.
+ * Format a parsed Darwin time as "HH:MM".
  *
- * @param string $from Earlier time "HH:MM".
- * @param string $to   Later time "HH:MM".
- * @return int|null Minutes difference (0..1439), or null if either is invalid.
+ * @param DateTimeImmutable|null $dt Parsed time.
+ * @return string|null "HH:MM", or null if absent.
  */
-function minutesBetween(string $from, string $to): ?int
+function formatHm(?DateTimeImmutable $dt): ?string
 {
-    $a = toMinutes($from);
-    $b = toMinutes($to);
-    if ($a === null || $b === null) {
-        return null;
-    }
-    return ($b - $a + 1440) % 1440;
+    return $dt !== null ? $dt->format('H:i') : null;
 }
 
 /**
- * Work out status, expected time and lateness from Darwin's std/etd.
+ * Whole minutes from $from to $to (can be negative).
  *
- * @param string $std       Scheduled time.
- * @param string $etd       "On time", "Delayed", "Cancelled" or an HH:MM time.
- * @param bool   $cancelled True when the service is cancelled.
- * @param int    $threshold Minutes late at or below which counts as on time.
- * @return array{status:string, expected:string, minutesLate:int}
+ * @param DateTimeImmutable $from Earlier time.
+ * @param DateTimeImmutable $to   Later time.
+ * @return int Signed minutes.
  */
-function computeStatus(string $std, string $etd, bool $cancelled, int $threshold = 1): array
+function minutesDiff(DateTimeImmutable $from, DateTimeImmutable $to): int
 {
-    if ($cancelled || strcasecmp($etd, 'Cancelled') === 0) {
+    return (int) round(($to->getTimestamp() - $from->getTimestamp()) / 60);
+}
+
+/**
+ * Work out status, expected time and lateness from a service's std/etd/atd.
+ *
+ * @param DateTimeImmutable|null $std       Scheduled time.
+ * @param DateTimeImmutable|null $etd       Forecast time, if given.
+ * @param DateTimeImmutable|null $atd       Actual time, if the train has already left.
+ * @param bool                   $cancelled True when the service is cancelled.
+ * @return array{status:string, expected:DateTimeImmutable|null, minutesLate:int}
+ */
+function computeStatus(?DateTimeImmutable $std, ?DateTimeImmutable $etd, ?DateTimeImmutable $atd, bool $cancelled): array
+{
+    if ($cancelled) {
         return ['status' => 'cancelled', 'expected' => $std, 'minutesLate' => 0];
     }
-    if (strcasecmp($etd, 'On time') === 0) {
+    $actual = $atd ?? $etd;
+    if ($std === null || $actual === null) {
+        // No live forecast yet (common near the edge of the time window).
+        // Show the scheduled time rather than guessing at a delay.
         return ['status' => 'ontime', 'expected' => $std, 'minutesLate' => 0];
     }
-    $late = toMinutes($etd) !== null ? minutesBetween($std, $etd) : null;
-    if ($late === null) {
-        return ['status' => 'delayed', 'expected' => $std, 'minutesLate' => 0];
-    }
-    // A big "negative" result means the train is running early across midnight; treat as on time.
-    if ($late > 720) {
-        $late = 0;
-    }
-    return [
-        'status' => $late <= $threshold ? 'ontime' : 'late',
-        'expected' => $etd,
-        'minutesLate' => $late,
-    ];
+    return ['status' => 'ontime', 'expected' => $actual, 'minutesLate' => max(0, minutesDiff($std, $actual))];
 }
 
 /**
  * Decide which section a scheduled time belongs to.
  *
- * @param string $std     Scheduled departure "HH:MM".
- * @param array  $windows Config windows (morningEnd, afternoonStart).
+ * @param DateTimeImmutable|null $std     Scheduled departure.
+ * @param array                  $windows Config windows (morningEnd, afternoonStart).
  * @return string "morning", "afternoon" or "other".
  */
-function sectionFor(string $std, array $windows): string
+function sectionFor(?DateTimeImmutable $std, array $windows): string
 {
-    $m = toMinutes($std);
-    if ($m === null) {
+    if ($std === null) {
         return 'other';
     }
-    if ($m < toMinutes($windows['morningEnd'])) {
+    $hm = $std->format('H:i');
+    if ($hm < $windows['morningEnd']) {
         return 'morning';
     }
-    if ($m >= toMinutes($windows['afternoonStart'])) {
+    if ($hm >= $windows['afternoonStart']) {
         return 'afternoon';
     }
     return 'other';
+}
+
+/**
+ * Whether a ServiceLocation entry is a genuine public calling point (not a
+ * passing location or operational-only junction).
+ *
+ * @param array $loc A subsequentLocations entry.
+ * @return bool True when it is a real, public stop.
+ */
+function isPublicStop(array $loc): bool
+{
+    return !empty($loc['crs']) && empty($loc['isPass']) && empty($loc['isOperational']);
+}
+
+/**
+ * Extract human-readable reason text, if any. Darwin's REST API returns
+ * cancelReason/delayReason as a reason-code object ({near, Value}), not
+ * text — resolving the code requires a separate GetReasonCode lookup we
+ * don't make, so there is no text to show for that case.
+ *
+ * @param mixed $value Raw cancelReason/delayReason value.
+ * @return string|null Reason text, or null when none is available.
+ */
+function reasonText($value): ?string
+{
+    return is_string($value) && trim($value) !== '' ? trim($value) : null;
 }
 
 /**
@@ -101,51 +134,47 @@ function sectionFor(string $std, array $windows): string
  */
 function normaliseService(array $svc, string $destCrs, array $config): array
 {
-    $std = (string) ($svc['std'] ?? '');
-    $etd = (string) ($svc['etd'] ?? '');
-    $cancelled = !empty($svc['isCancelled']) || strcasecmp($etd, 'Cancelled') === 0;
-    $status = computeStatus($std, $etd, $cancelled, 1);
+    $std = parseDarwinTime($svc['std'] ?? null);
+    $etd = parseDarwinTime($svc['etd'] ?? null);
+    $atd = parseDarwinTime($svc['atd'] ?? null);
+    $cancelled = !empty($svc['isCancelled']);
+    $status = computeStatus($std, $etd, $atd, $cancelled);
 
-    $points = [];
-    foreach ($svc['subsequentLocations'] ?? [] as $loc) {
-        $etdLoc = (string) ($loc['etd'] ?? '');
-        $points[] = [
-            'name' => (string) ($loc['locationName'] ?? ''),
-            'crs' => (string) ($loc['crs'] ?? ''),
-            'time' => $etdLoc !== '' && toMinutes($etdLoc) !== null ? $etdLoc : (string) ($loc['std'] ?? ''),
-        ];
-    }
-
+    $locations = $svc['subsequentLocations'] ?? [];
     $arrival = null;
     $duration = null;
     $between = [];
     $reached = false;
-    foreach ($points as $p) {
-        if (strcasecmp($p['crs'], $destCrs) === 0) {
-            $arrival = $p['time'];
-            $duration = minutesBetween($std, $p['time']);
+    foreach ($locations as $loc) {
+        if (!$reached && strcasecmp((string) ($loc['crs'] ?? ''), $destCrs) === 0) {
+            $locTime = parseDarwinTime($loc['etd'] ?? null) ?? parseDarwinTime($loc['eta'] ?? null)
+                ?? parseDarwinTime($loc['std'] ?? null) ?? parseDarwinTime($loc['sta'] ?? null);
+            $arrival = formatHm($locTime);
+            $duration = ($std !== null && $locTime !== null) ? minutesDiff($std, $locTime) : null;
             $reached = true;
-            break;
+            continue;
         }
-        $between[] = $p['name'];
+        if (!$reached && isPublicStop($loc)) {
+            $between[] = (string) $loc['locationName'];
+        }
     }
     if (!$reached) {
         $between = [];
     }
 
     $destinations = $svc['destination'] ?? [];
-    $final = $destinations ? (string) (end($destinations)['locationName'] ?? '') : ($points ? end($points)['name'] : '');
+    $final = $destinations ? (string) (end($destinations)['locationName'] ?? '') : '';
     $platform = trim((string) ($svc['platform'] ?? ''));
 
     return [
         'id' => (string) ($svc['rid'] ?? $svc['uid'] ?? $svc['trainid'] ?? ''),
-        'scheduledDeparture' => $std,
-        'expectedDeparture' => $status['expected'],
+        'scheduledDeparture' => formatHm($std),
+        'expectedDeparture' => formatHm($status['expected']),
         'status' => $status['status'],
         'minutesLate' => $status['minutesLate'],
         'cancelled' => $status['status'] === 'cancelled',
-        'cancelReason' => trim((string) ($svc['cancelReason'] ?? '')) ?: null,
-        'delayReason' => trim((string) ($svc['delayReason'] ?? '')) ?: null,
+        'cancelReason' => reasonText($svc['cancelReason'] ?? null),
+        'delayReason' => reasonText($svc['delayReason'] ?? null),
         'platform' => $platform !== '' ? $platform : null,
         'platformConfirmed' => $platform !== '' && empty($svc['platformIsHidden']),
         'finalDestination' => $final,
@@ -169,17 +198,14 @@ function normaliseService(array $svc, string $destCrs, array $config): array
  */
 function normaliseBoard(array $board, array $dest, array $config): array
 {
+    $raw = $board['trainServices'] ?? [];
+    // Sort by the raw ISO std first: it carries a full date, so this sorts
+    // correctly across midnight with no rollover arithmetic needed.
+    usort($raw, fn(array $a, array $b): int => strcmp((string) ($a['std'] ?? ''), (string) ($b['std'] ?? '')));
     $services = [];
-    foreach ($board['trainServices'] ?? [] as $svc) {
+    foreach ($raw as $svc) {
         $services[] = normaliseService($svc, $dest['crs'], $config);
     }
-    // Sort by scheduled time, treating early-hours services as after late-night ones.
-    $base = toMinutes(date('H:i'));
-    usort($services, function (array $a, array $b) use ($base): int {
-        $ka = (toMinutes($a['scheduledDeparture']) - $base + 1440 + 120) % 1440;
-        $kb = (toMinutes($b['scheduledDeparture']) - $base + 1440 + 120) % 1440;
-        return $ka <=> $kb;
-    });
     $messages = [];
     foreach ($board['nrccMessages'] ?? [] as $msg) {
         $messages[] = trim(strip_tags(html_entity_decode((string) ($msg['xhtmlMessage'] ?? ''))));
