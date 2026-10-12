@@ -169,7 +169,7 @@ require_once __DIR__ . '/config.php';
 
 ### 6.3 Other files
 
-- `config.php`: reads `.config.json` from one directory above `/api` where possible, falls back to the project root, validates required keys, and fails with a generic message (never echoing the API key).
+- `config.php`: reads `.config.json` from the project root (next to `/api`), falling back to one directory above for hosts with a dedicated document root. The project root is checked first since on shared hosting the directory above may belong to a sibling site. Validates required keys and fails with a generic message (never echoing the API key).
 - `ldbws.php`: a small REST client built on cURL. LDBSVWS is accessed as a plain JSON-over-HTTPS API product on the Rail Data Marketplace, authenticated with an `x-apikey` header — no SOAP extension or hand-built XML envelope involved.
 - `cache.php`: JSON files in `api/cache/`, keyed by destination, atomic write. `api/cache/.htaccess` contains `Require all denied`.
 - `health.php`: returns server time and cache age per destination, no secrets.

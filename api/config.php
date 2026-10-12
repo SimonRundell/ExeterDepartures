@@ -2,8 +2,11 @@
 /**
  * Configuration loader for the Exeter departures API.
  *
- * Reads .config.json from one directory above /api when present (so it can sit
- * outside the web root), otherwise from the project root. Never echoes secrets.
+ * Reads .config.json from the project root (next to /api), falling back to
+ * one directory above for hosts with a dedicated document root where it can
+ * sit outside the web root. The project root is checked first because on
+ * shared hosting the directory above may belong to a sibling site and hold
+ * an unrelated .config.json. Never echoes secrets.
  *
  * @license CC BY-NC-SA 4.0
  */
@@ -16,13 +19,15 @@
 function readConfigFile(): ?array
 {
     $candidates = [
-        dirname(__DIR__, 2) . '/.config.json',
         dirname(__DIR__) . '/.config.json',
+        dirname(__DIR__, 2) . '/.config.json',
     ];
     foreach ($candidates as $path) {
         if (is_file($path)) {
             $data = json_decode((string) file_get_contents($path), true);
-            return is_array($data) ? $data : null;
+            if (is_array($data)) {
+                return $data;
+            }
         }
     }
     return null;
