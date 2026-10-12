@@ -1,0 +1,28 @@
+{
+  "darwin": {
+    "token": "REPLACE_WITH_TOKEN",
+    "endpoint": "https://lite.realtime.nationalrail.co.uk/OpenLDBWS/ldb12.asmx",
+    "namespace": "http://thalesgroup.com/RTTI/2021-11-01/ldb/"
+  },
+  "origin": { "crs": "EXD", "name": "Exeter St David's" },
+  "destinations": [
+    { "crs": "EXM", "name": "Exmouth" },
+    { "crs": "PLY", "name": "Plymouth" },
+    { "crs": "OKE", "name": "Okehampton" },
+    { "crs": "BNP", "name": "Barnstaple" },
+    { "crs": "TVP", "name": "Tiverton Parkway" }
+  ],
+  "windows": {
+    "morningEnd": "09:00",
+    "afternoonStart": "16:00",
+    "afternoonLiveFrom": "14:00"
+  },
+  "cacheSeconds": 30,
+  "allowedOrigins": ["https://YOUR-PRODUCTION-DOMAIN"],
+  "ui": {
+    "pollSeconds": 30,
+    "rotateSeconds": 20,
+    "pauseOnTouchSeconds": 60,
+    "lateThresholdMinutes": 2
+  }
+}

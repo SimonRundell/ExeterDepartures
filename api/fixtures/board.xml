@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <soap:Body>
+    <GetDepBoardWithDetailsResponse xmlns="http://thalesgroup.com/RTTI/2021-11-01/ldb/">
+      <GetStationBoardResult xmlns:lt4="http://thalesgroup.com/RTTI/2015-11-27/ldb/types" xmlns:lt7="http://thalesgroup.com/RTTI/2017-10-01/ldb/types">
+        <lt4:generatedAt>2026-10-12T23:30:00+01:00</lt4:generatedAt>
+        <lt4:locationName>Exeter St Davids</lt4:locationName>
+        <lt4:crs>EXD</lt4:crs>
+        <lt7:nrccMessages><lt:message xmlns:lt="http://thalesgroup.com/RTTI/2012-01-13/ldb/types">Disruption at &lt;a href="x"&gt;Plymouth&lt;/a&gt;.</lt:message></lt7:nrccMessages>
+        <lt7:trainServices>
+          <lt7:service>
+            <lt4:std>23:58</lt4:std><lt4:etd>00:03</lt4:etd><lt4:platform>3</lt4:platform>
+            <lt4:operator>Great Western Railway</lt4:operator><lt4:operatorCode>GW</lt4:operatorCode>
+            <lt4:serviceID>AAA1</lt4:serviceID>
+            <lt5:destination xmlns:lt5="http://thalesgroup.com/RTTI/2015-11-27/ldb/types"><lt5:location><lt5:locationName>Paignton</lt5:locationName></lt5:location></lt5:destination>
+            <lt7:subsequentCallingPoints><lt7:callingPointList>
+              <lt7:callingPoint><lt7:locationName>St Thomas</lt7:locationName><lt7:crs>SDW</lt7:crs><lt7:st>00:01</lt7:st><lt7:et>On time</lt7:et></lt7:callingPoint>
+              <lt7:callingPoint><lt7:locationName>Plymouth</lt7:locationName><lt7:crs>PLY</lt7:crs><lt7:st>00:40</lt7:st><lt7:et>00:45</lt7:et></lt7:callingPoint>
+              <lt7:callingPoint><lt7:locationName>Paignton</lt7:locationName><lt7:crs>PGN</lt7:crs><lt7:st>01:20</lt7:st><lt7:et>On time</lt7:et></lt7:callingPoint>
+            </lt7:callingPointList></lt7:subsequentCallingPoints>
+          </lt7:service>
+          <lt7:service>
+            <lt4:std>23:30</lt4:std><lt4:etd>Cancelled</lt4:etd><lt4:isCancelled>true</lt4:isCancelled>
+            <lt4:cancelReason>Cancelled due to crew shortage</lt4:cancelReason>
+            <lt4:operator>Great Western Railway</lt4:operator><lt4:operatorCode>GW</lt4:operatorCode>
+            <lt4:serviceID>BBB2</lt4:serviceID>
+            <lt5:destination xmlns:lt5="http://thalesgroup.com/RTTI/2015-11-27/ldb/types"><lt5:location><lt5:locationName>Plymouth</lt5:locationName></lt5:location></lt5:destination>
+            <lt7:subsequentCallingPoints><lt7:callingPointList>
+              <lt7:callingPoint><lt7:locationName>Plymouth</lt7:locationName><lt7:crs>PLY</lt7:crs><lt7:st>00:10</lt7:st><lt7:et>Cancelled</lt7:et></lt7:callingPoint>
+            </lt7:callingPointList></lt7:subsequentCallingPoints>
+          </lt7:service>
+        </lt7:trainServices>
+      </GetStationBoardResult>
+    </GetDepBoardWithDetailsResponse>
+  </soap:Body>
+</soap:Envelope>

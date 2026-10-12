@@ -1,0 +1,429 @@
+/*
+ * Exeter St David's Departures Board
+ * The only stylesheet. Dark, high contrast theme for a 1080p wall display.
+ * Licensed CC BY-NC-SA 4.0.
+ */
+
+:root {
+  --bg: #0b1220;
+  --surface: #162033;
+  --surface-2: #1f2d47;
+  --border: #33466b;
+  --text: #f4f7fb;
+  --text-dim: #b9c4d8;
+  --accent: #5cc8ff;
+
+  --ok-bg: #166534;
+  --ok-text: #ecfdf5;
+  --late-bg: #fbbf24;
+  --late-text: #1c1300;
+  --severe-bg: #b91c1c;
+  --severe-text: #ffffff;
+  --due-bg: #1d4ed8;
+  --due-text: #ffffff;
+
+  --space-1: 0.4rem;
+  --space-2: 0.8rem;
+  --space-3: 1.2rem;
+  --space-4: 2rem;
+  --radius: 0.9rem;
+
+  --fs-base: clamp(1rem, 0.6rem + 0.9vw, 1.5rem);
+  --fs-small: 0.8em;
+  --fs-title: clamp(1.4rem, 1rem + 1.6vw, 2.6rem);
+  --fs-clock: clamp(2rem, 1.2rem + 3vw, 4.5rem);
+  --fs-tab: clamp(1.1rem, 0.7rem + 1.3vw, 2.2rem);
+  --fs-time: clamp(2.2rem, 1.4rem + 2.6vw, 4rem);
+  --fs-platform: clamp(2.4rem, 1.6rem + 2.4vw, 4rem);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Trebuchet MS', 'Segoe UI', Helvetica, Arial, sans-serif;
+  font-size: var(--fs-base);
+  line-height: 1.35;
+  cursor: default;
+}
+
+a {
+  color: var(--accent);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.board {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: var(--space-3) var(--space-4);
+  gap: var(--space-2);
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.header__title {
+  margin: 0;
+  font-size: var(--fs-title);
+}
+
+.header__clock {
+  margin: 0;
+  font-size: var(--fs-clock);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
+}
+
+/* Tab bar */
+.tabbar {
+  position: relative;
+}
+
+.tabbar__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: var(--space-1);
+}
+
+.tab {
+  font: inherit;
+  font-size: var(--fs-tab);
+  font-weight: 700;
+  color: var(--text-dim);
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: var(--space-2) var(--space-1);
+  cursor: pointer;
+}
+
+.tab[aria-selected='true'] {
+  color: #04101e;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.tab:focus-visible {
+  outline: 4px solid #ffffff;
+  outline-offset: 2px;
+}
+
+.tabbar__progress {
+  display: block;
+  width: 100%;
+  height: 0.5rem;
+  margin-top: 2px;
+  appearance: none;
+  border: 0;
+  background: var(--surface-2);
+}
+
+.tabbar__progress::-webkit-progress-bar {
+  background: var(--surface-2);
+}
+
+.tabbar__progress::-webkit-progress-value {
+  background: var(--accent);
+}
+
+.tabbar__progress::-moz-progress-bar {
+  background: var(--accent);
+}
+
+.tabbar__paused {
+  position: absolute;
+  right: 0;
+  bottom: -2.2rem;
+  margin: 0;
+  padding: 0.1em 0.7em;
+  font-size: var(--fs-small);
+  font-weight: 700;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+/* Body */
+.main {
+  flex: 1;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.section__title {
+  margin: 0 0 var(--space-2);
+  font-size: calc(var(--fs-base) * 1.4);
+  color: var(--accent);
+  border-bottom: 2px solid var(--border);
+  padding-bottom: var(--space-1);
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+  gap: var(--space-2);
+}
+
+.placeholder {
+  margin: 0;
+  padding: var(--space-3);
+  color: var(--text-dim);
+  background: var(--surface);
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+}
+
+.banner {
+  margin: 0;
+  padding: var(--space-1) var(--space-3);
+  font-weight: 700;
+  border-radius: var(--radius);
+}
+
+.banner--warn {
+  color: var(--late-text);
+  background: var(--late-bg);
+}
+
+.banner--info {
+  background: var(--surface-2);
+}
+
+.messages {
+  margin: 0;
+  padding: var(--space-1) var(--space-3) var(--space-1) 2rem;
+  background: var(--surface-2);
+  border-left: 6px solid var(--late-bg);
+  border-radius: var(--radius);
+}
+
+/* Cards */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-left-width: 10px;
+  border-radius: var(--radius);
+}
+
+.card--ontime,
+.card--due {
+  border-left-color: var(--ok-bg);
+}
+
+.card--late,
+.card--delayed {
+  border-left-color: var(--late-bg);
+}
+
+.card--verylate,
+.card--cancelled {
+  border-left-color: var(--severe-bg);
+}
+
+.card__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.card__time {
+  margin: 0;
+  font-size: var(--fs-time);
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.card__arrival {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: var(--fs-small);
+  font-variant-numeric: tabular-nums;
+}
+
+.is-struck {
+  text-decoration: line-through;
+  text-decoration-thickness: 0.08em;
+}
+
+.card__detail {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: var(--fs-small);
+}
+
+.card__facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1) var(--space-3);
+  margin: var(--space-1) 0 0;
+}
+
+.card__fact {
+  display: flex;
+  flex-direction: column;
+}
+
+.card__fact dt {
+  color: var(--text-dim);
+  font-size: calc(var(--fs-small) * 0.85);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.card__fact dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+.card__fact--platform {
+  grid-row: span 2;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--space-2);
+  background: var(--surface-2);
+  border-radius: var(--radius);
+}
+
+.card__platform {
+  font-size: var(--fs-platform);
+  line-height: 1;
+}
+
+.card__fact--operator dd {
+  font-weight: 400;
+  color: var(--text-dim);
+}
+
+/* Status badges: colour, icon and words together */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 0.5em;
+  padding: 0.15em 0.8em 0.15em 0.4em;
+  font-weight: 700;
+  border-radius: 999px;
+  border: 2px solid transparent;
+}
+
+.badge__icon {
+  display: inline-grid;
+  place-items: center;
+  width: 1.5em;
+  height: 1.5em;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  line-height: 1;
+}
+
+.badge--ontime {
+  background: var(--ok-bg);
+  color: var(--ok-text);
+}
+
+.badge--due {
+  background: var(--due-bg);
+  color: var(--due-text);
+}
+
+.badge--late {
+  background: var(--late-bg);
+  color: var(--late-text);
+}
+
+.badge--late .badge__icon,
+.badge--delayed .badge__icon {
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.badge--delayed {
+  background: var(--surface-2);
+  color: var(--late-bg);
+  border-color: var(--late-bg);
+}
+
+.badge--verylate {
+  background: var(--severe-bg);
+  color: var(--severe-text);
+}
+
+.badge--cancelled {
+  background: var(--surface-2);
+  color: #ffb4b4;
+  border-color: #ff6b6b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Footer */
+.footer {
+  margin-top: auto;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+  color: var(--text-dim);
+  font-size: var(--fs-small);
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+}
+
+.footer p {
+  margin: 0;
+}
+
+@media (max-width: 700px) {
+  .board {
+    padding: var(--space-2);
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tab,
+  .badge {
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+}

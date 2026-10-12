@@ -1,0 +1,21 @@
+RewriteEngine On
+
+# Never expose configuration or cache files to the browser.
+<FilesMatch "^\.config(\.example)?\.json$">
+    Require all denied
+</FilesMatch>
+RewriteRule ^\.config - [F,L]
+RewriteRule ^api/cache/ - [F,L]
+
+# Let real files/directories (including /api/*) resolve normally.
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Everything else falls back to index.html so a hard refresh still works.
+RewriteRule ^ index.html [L]
+
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
