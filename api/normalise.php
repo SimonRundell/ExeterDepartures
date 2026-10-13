@@ -127,6 +127,9 @@ function reasonText($value): ?string
 /**
  * Normalise one Darwin ServiceItemWithLocations entry.
  *
+ * Adds callingAt: every public stop still to come, in order, with the tab
+ * destination flagged.
+ *
  * @param array  $svc     The decoded service object (trainServices[n]).
  * @param string $destCrs CRS of the tab destination.
  * @param array  $config  Validated config.
@@ -145,7 +148,14 @@ function normaliseService(array $svc, string $destCrs, array $config): array
     $duration = null;
     $between = [];
     $reached = false;
+    $callingAt = [];
     foreach ($locations as $loc) {
+        if (isPublicStop($loc)) {
+            $callingAt[] = [
+                'name' => (string) $loc['locationName'],
+                'isTabDestination' => strcasecmp((string) $loc['crs'], $destCrs) === 0,
+            ];
+        }
         if (!$reached && strcasecmp((string) ($loc['crs'] ?? ''), $destCrs) === 0) {
             $locTime = parseDarwinTime($loc['etd'] ?? null) ?? parseDarwinTime($loc['eta'] ?? null)
                 ?? parseDarwinTime($loc['std'] ?? null) ?? parseDarwinTime($loc['sta'] ?? null);
@@ -184,6 +194,7 @@ function normaliseService(array $svc, string $destCrs, array $config): array
         'durationMinutes' => $duration,
         'stopsBetween' => $reached ? count($between) : null,
         'callingPoints' => $between,
+        'callingAt' => $callingAt,
         'section' => sectionFor($std, $config['windows']),
     ];
 }

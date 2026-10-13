@@ -1,4 +1,5 @@
 import StatusBadge from './StatusBadge.jsx'
+import { getOperatorIcon } from './icons.jsx'
 import { getStatusInfo } from '../utils/status.js'
 
 /**
@@ -61,9 +62,27 @@ export default function ServiceCard({ service, destinationName, lateThreshold })
         </div>
         <div className="card__fact card__fact--operator">
           <dt>Operator</dt>
-          <dd>{service.operator}</dd>
+          <dd className="card__operator">
+            <span className="card__logo" aria-hidden="true">
+              {getOperatorIcon(service.operatorCode, '100%', 'operator-logo')}
+            </span>
+            <span>{service.operator}</span>
+          </dd>
         </div>
       </dl>
+
+      {service.callingAt?.length > 0 && (
+        <div className="card__calling">
+          <p className="card__calling-label">Calling at</p>
+          <ol className="card__calling-list">
+            {service.callingAt.map((stop) => (
+              <li key={stop.name} className={stop.isTabDestination ? 'is-tab-destination' : undefined}>
+                {stop.name}
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
     </article>
   )
 }

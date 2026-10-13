@@ -74,7 +74,7 @@ function getConfig(): array
             failJson(500, 'Server configuration error.');
         }
     }
-    if (empty($config['darwin']['endpoint']) || empty($config['darwin']['apiKey'])) {
+    if (empty($config['darwin']['endpoint'])) {
         failJson(500, 'Server configuration error.');
     }
     $config['cacheSeconds'] = max(30, (int) $config['cacheSeconds']);

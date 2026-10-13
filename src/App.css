@@ -332,6 +332,71 @@ a {
   color: var(--text-dim);
 }
 
+.card__fact--operator {
+  grid-column: 1 / -1;
+}
+
+.card__operator {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+
+/* Fixed-size logo box so every operator lines up. Logos scale to fit, on a light backing for the dark theme. */
+.card__logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 4.2em;
+  height: 2.2em;
+  padding: 0.25em 0.4em;
+  background: #ffffff;
+  border-radius: 0.3em;
+}
+
+.card__logo .operator-logo {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.card__calling {
+  margin-top: var(--space-1);
+  padding-top: var(--space-1);
+  border-top: 1px solid var(--border);
+  font-size: var(--fs-small);
+}
+
+.card__calling-label {
+  margin: 0 0 0.2em;
+  color: var(--text-dim);
+  font-size: 0.85em;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.card__calling-list {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card__calling-list li:not(:last-child)::after {
+  content: '·';
+  margin: 0 0.4em;
+  color: var(--text-dim);
+}
+
+.card__calling-list .is-tab-destination {
+  color: var(--accent);
+  font-weight: 700;
+}
+
 /* Status badges: colour, icon and words together */
 .badge {
   display: inline-flex;

@@ -56,6 +56,10 @@ if ($entry !== null && $age < $config['cacheSeconds']) {
     exit();
 }
 
+if (empty($config['darwin']['apiKey']) || $config['darwin']['apiKey'] === 'REPLACE_WITH_API_KEY') {
+    failJson(500, 'Server configuration error.');
+}
+
 try {
     $board = fetchDepartureBoard($config, $config['origin']['crs'], $dest['crs'], 9);
     $body = normaliseBoard($board, $dest, $config);

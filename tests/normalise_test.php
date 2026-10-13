@@ -43,6 +43,8 @@ check('arrival uses etd', $a['arrivalAtTabDestination'], '00:45');
 check('duration rolls midnight', $a['durationMinutes'], 47);
 check('junction and passing point excluded from stops', $a['stopsBetween'], 1);
 check('calling points list excludes junction/passing', $a['callingPoints'], ['St Thomas']);
+check('callingAt lists all public stops', array_column($a['callingAt'], 'name'), ['St Thomas', 'Plymouth', 'Paignton']);
+check('callingAt flags tab destination', array_column($a['callingAt'], 'isTabDestination'), [false, true, false]);
 check('final beyond tab', $a['finalDestination'], 'Paignton');
 check('platform', $a['platform'], '3');
 check('section', $a['section'], 'afternoon');
