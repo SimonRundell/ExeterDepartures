@@ -65,6 +65,8 @@ function getConfig(): array
     $defaults = [
         'windows' => ['morningEnd' => '09:00', 'afternoonStart' => '16:00', 'afternoonLiveFrom' => '14:00'],
         'cacheSeconds' => 30,
+        // Minutes of already-departed trains to include on the arrivals-side query.
+        'arrivalLookbackMinutes' => 75,
         'allowedOrigins' => [],
         'ui' => ['pollSeconds' => 30, 'rotateSeconds' => 20, 'pauseOnTouchSeconds' => 60, 'lateThresholdMinutes' => 2],
     ];

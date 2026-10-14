@@ -17,6 +17,7 @@
     "afternoonLiveFrom": "14:00"
   },
   "cacheSeconds": 30,
+  "arrivalLookbackMinutes": 75,
   "allowedOrigins": ["https://YOUR-PRODUCTION-DOMAIN", "http://localhost"],
   "devApiBase": "http://localhost/api",
   "ui": {

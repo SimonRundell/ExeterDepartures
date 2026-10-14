@@ -15,12 +15,15 @@
  * @param string $from   Origin CRS.
  * @param string $to     Filter CRS (services calling at this station).
  * @param int    $rows   Maximum rows. The API accepts 1-9 for this operation.
+ * @param int    $lookbackMinutes Start the board this many minutes in the past. Darwin then
+ *                        includes trains that have already left (with actual departure times),
+ *                        which is how services in transit towards the origin are seen.
  * @return array The decoded StationBoardWithDetails object.
  * @throws RuntimeException On transport, HTTP or API error.
  */
-function fetchDepartureBoard(array $config, string $from, string $to, int $rows = 9): array
+function fetchDepartureBoard(array $config, string $from, string $to, int $rows = 9, int $lookbackMinutes = 0): array
 {
-    $time = (new DateTime('now', new DateTimeZone('Europe/London')))->format('Ymd\THis');
+    $time = (new DateTime('-' . max(0, min(119, $lookbackMinutes)) . ' minutes', new DateTimeZone('Europe/London')))->format('Ymd\THis');
     $query = http_build_query([
         'numRows' => max(1, min(9, $rows)),
         'filterCrs' => $to,

@@ -34,6 +34,18 @@
       ]
     },
     {
+      "rid": "ARR4",
+      "std": "2026-10-12T22:50:00",
+      "atd": "2026-10-12T22:51:00",
+      "operator": "Great Western Railway",
+      "operatorCode": "GW",
+      "origin": [{ "locationName": "Penzance" }],
+      "destination": [{ "locationName": "London Paddington" }],
+      "subsequentLocations": [
+        { "locationName": "Exeter St Davids", "crs": "EXD", "isPass": false, "sta": "2026-10-12T23:45:00", "ata": "2026-10-12T23:46:00", "platform": "3" }
+      ]
+    },
+    {
       "rid": "ARR3",
       "std": "2026-10-13T07:10:00",
       "delayReason": "A fault with the signalling system",

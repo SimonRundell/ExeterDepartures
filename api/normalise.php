@@ -294,6 +294,7 @@ function normaliseArrivalService(array $svc, string $originCrs, array $config): 
         'originStation' => $originName,
         'operator' => (string) ($svc['operator'] ?? ''),
         'operatorCode' => (string) ($svc['operatorCode'] ?? ''),
+        'actualArrival' => formatHm($ata),
         'departureFromOrigin' => formatHm($townDeparture),
         'durationMinutes' => $duration,
         'stopsBetween' => $reached ? count($between) : null,
@@ -317,7 +318,11 @@ function normaliseArrivalBoard(array $board, string $originCrs, array $config): 
     usort($raw, fn(array $a, array $b): int => strcmp((string) ($a['std'] ?? ''), (string) ($b['std'] ?? '')));
     $services = [];
     foreach ($raw as $svc) {
-        $services[] = normaliseArrivalService($svc, $originCrs, $config);
+        $service = normaliseArrivalService($svc, $originCrs, $config);
+        // Trains that have already arrived are no use to someone checking for delays.
+        if ($service['actualArrival'] === null) {
+            $services[] = $service;
+        }
     }
     $messages = [];
     foreach ($board['nrccMessages'] ?? [] as $msg) {

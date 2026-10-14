@@ -67,7 +67,7 @@ $originCrs = $config['origin']['crs'];
 
 $arrivalBody = null;
 try {
-    $arrivalBoard = fetchDepartureBoard($config, $dest['crs'], $originCrs, 9);
+    $arrivalBoard = fetchDepartureBoard($config, $dest['crs'], $originCrs, 9, (int) ($config['arrivalLookbackMinutes'] ?? 75));
     $arrivalBody = normaliseArrivalBoard($arrivalBoard, $originCrs, $config);
 } catch (Throwable $e) {
     error_log('departures.php (arrivals from ' . $dest['crs'] . '): ' . $e->getMessage());

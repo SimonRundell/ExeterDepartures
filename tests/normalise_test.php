@@ -97,6 +97,7 @@ check('arrival non-stop zero stops', $r2['stopsBetween'], 0);
 $r3 = $arr['ARR3'];
 check('arrival delay reason surfaced', $r3['delayReason'], 'A fault with the signalling system');
 check('arrival without forecast stays scheduled', $r3['expectedArrival'], '08:30');
+check('already-arrived trains are dropped', isset($arr['ARR4']), false);
 check('arrivals sorted by town departure', array_keys($arr), ['ARR1', 'ARR2', 'ARR3']);
 
 exit($fails ? 1 : 0);

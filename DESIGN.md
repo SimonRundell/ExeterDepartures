@@ -206,6 +206,8 @@ The subscription does not route Darwin's arrivals-board operations (`GetArrBoard
 - `originStation` is the last entry of the service's `origin` array.
 - `section` is decided from the scheduled arrival time.
 
+The tab town is often a waypoint rather than the origin, so a train from Penzance may already have left Plymouth and be on its way to Exeter. A board starting at "now" would miss it. The arrivals query therefore starts the board in the past (the `{time}` path segment is `now - arrivalLookbackMinutes`, default 75), and Darwin includes services that have already departed, with their `atd`. Services whose Exeter entry already has an `ata` (arrived) are dropped. The 120 minute window then reaches roughly `now + 45` minutes, which is the trade-off for the lookback.
+
 Both boards are fetched on every cache miss, each in its own try/catch, and merged into one `services` array. If only one succeeds the response is still returned, with the other direction empty. Only if both fail does the stale-cache or 502 rule below apply.
 6. On Darwin failure, return the last cached copy with `stale: true` and HTTP 200, or HTTP 502 with a clear JSON error if there is none.
 
@@ -242,6 +244,7 @@ Five destinations polled every 30 seconds from one Pi is about 20 upstream calls
     "afternoonLiveFrom": "14:00"
   },
   "cacheSeconds": 30,
+  "arrivalLookbackMinutes": 75,
   "allowedOrigins": ["https://YOUR-PRODUCTION-DOMAIN"],
   "devApiBase": "http://localhost/api",
   "ui": {
@@ -281,7 +284,7 @@ Status must never rely on colour alone. Pair every colour with text and an icon,
 - `useDepartures(dest)` polls `GET /api/departures.php?dest=XXX` every `pollSeconds` via Axios, and keeps showing the last good data if a request fails, with a discreet "Data may be out of date" banner once data is older than 3 minutes.
 - Poll only the visible tab, but prefetch the next tab a few seconds before rotation so switches are instant.
 - `useRotation` advances tabs every `rotateSeconds`, pauses on touch or click for `pauseOnTouchSeconds`, and respects the Page Visibility API.
-- Empty states: a friendly message such as "No direct trains in this window" (important for Okehampton, which has a far lighter service than the other lines).
+- Empty states: a friendly message such as "No trains in this window" (important for Okehampton, which has a far lighter service than the other lines).
 - A section with no live data shows its placeholder text rather than being hidden, so students understand why.
 - Cards use semantic HTML (`article`, `dl` for label and value pairs) and the tab bar uses proper ARIA tab roles.
 - A subtle once-a-day full reload (for example 03:00) prevents long-running memory growth on the Pi.

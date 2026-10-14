@@ -33,7 +33,7 @@ export function getMode(now, windows) {
  * @property {string} emptyMessage - Message shown when the section is live but empty.
  */
 
-const EMPTY = 'No direct trains in this window'
+const EMPTY = 'No trains in this window'
 
 /**
  * Split services into the sections to display for the current time.
