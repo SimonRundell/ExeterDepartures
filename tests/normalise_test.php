@@ -71,4 +71,32 @@ check('running early clamps minutesLate to zero', $earlyClampedToZero['minutesLa
 $cancelled = computeStatus($std, null, null, true);
 check('cancelled status', $cancelled['status'], 'cancelled');
 
+// Arrival direction (morning commute into the origin station).
+$arrBoard = json_decode((string) file_get_contents(__DIR__ . '/../api/fixtures/board_arrivals.json'), true);
+$arrConfig = ['windows' => ['morningEnd' => '09:00', 'afternoonStart' => '16:00']];
+$arrOut = normaliseArrivalBoard($arrBoard, 'EXD', $arrConfig);
+$arr = [];
+foreach ($arrOut['services'] as $s) {
+    $arr[$s['id']] = $s;
+}
+$r1 = $arr['ARR1'];
+check('arrival direction tag', $r1['direction'], 'arrival');
+check('arrival scheduled time at origin station', $r1['scheduledArrival'], '00:10');
+check('arrival expected time', $r1['expectedArrival'], '00:16');
+check('arrival midnight late minutes', $r1['minutesLate'], 6);
+check('arrival departure from town', $r1['departureFromOrigin'], '23:40');
+check('arrival duration rolls midnight', $r1['durationMinutes'], 36);
+check('arrival platform is the one at origin station', $r1['platform'], '4');
+check('arrival true origin beyond tab town', $r1['originStation'], 'Penzance');
+check('arrival stops exclude junction and passing', $r1['callingPoints'], ['Totnes']);
+check('arrival section from arrival time', $r1['section'], 'morning');
+$r2 = $arr['ARR2'];
+check('arrival cancelled', $r2['status'], 'cancelled');
+check('arrival cancelled no platform', $r2['platform'], null);
+check('arrival non-stop zero stops', $r2['stopsBetween'], 0);
+$r3 = $arr['ARR3'];
+check('arrival delay reason surfaced', $r3['delayReason'], 'A fault with the signalling system');
+check('arrival without forecast stays scheduled', $r3['expectedArrival'], '08:30');
+check('arrivals sorted by town departure', array_keys($arr), ['ARR1', 'ARR2', 'ARR3']);
+
 exit($fails ? 1 : 0);

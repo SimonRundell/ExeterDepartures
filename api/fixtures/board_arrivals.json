@@ -1,0 +1,49 @@
+{
+  "generatedAt": "2026-10-12T23:30:00+01:00",
+  "locationName": "Plymouth",
+  "crs": "PLY",
+  "nrccMessages": [],
+  "trainServices": [
+    {
+      "rid": "ARR1",
+      "std": "2026-10-12T23:40:00",
+      "etd": "2026-10-12T23:40:00",
+      "platform": "7",
+      "operator": "Great Western Railway",
+      "operatorCode": "GW",
+      "origin": [{ "locationName": "Penzance" }],
+      "destination": [{ "locationName": "Paignton" }],
+      "subsequentLocations": [
+        { "locationName": "Totnes", "crs": "TOT", "isPass": false, "std": "2026-10-13T00:00:00", "etd": "2026-10-13T00:00:00" },
+        { "locationName": "WESTJUNC", "tiploc": "WESTJUNC", "isOperational": true, "std": "2026-10-13T00:05:00" },
+        { "locationName": "Newton Abbot", "crs": "NAB", "isPass": true, "std": "2026-10-13T00:03:00" },
+        { "locationName": "Exeter St Davids", "crs": "EXD", "isPass": false, "sta": "2026-10-13T00:10:00", "eta": "2026-10-13T00:16:00", "platform": "4" }
+      ]
+    },
+    {
+      "rid": "ARR2",
+      "std": "2026-10-12T23:55:00",
+      "isCancelled": true,
+      "cancelReason": "Cancelled due to crew shortage",
+      "operator": "CrossCountry",
+      "operatorCode": "XC",
+      "origin": [{ "locationName": "Plymouth" }],
+      "destination": [{ "locationName": "Edinburgh" }],
+      "subsequentLocations": [
+        { "locationName": "Exeter St Davids", "crs": "EXD", "isPass": false, "sta": "2026-10-13T00:50:00" }
+      ]
+    },
+    {
+      "rid": "ARR3",
+      "std": "2026-10-13T07:10:00",
+      "delayReason": "A fault with the signalling system",
+      "operator": "Great Western Railway",
+      "operatorCode": "GW",
+      "origin": [{ "locationName": "Plymouth" }],
+      "destination": [{ "locationName": "London Paddington" }],
+      "subsequentLocations": [
+        { "locationName": "Exeter St Davids", "crs": "EXD", "isPass": false, "sta": "2026-10-13T08:30:00", "platform": "5" }
+      ]
+    }
+  ]
+}

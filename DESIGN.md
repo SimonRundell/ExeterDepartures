@@ -22,7 +22,7 @@ Origin: Exeter St David's, CRS `EXD`.
 
 1. **Data source: the official National Rail Darwin feed, not page scraping.** The nationalrail.co.uk pages are rendered by JavaScript, are brittle to parse and their terms do not invite automated scraping. The Live Departure Boards Staff Web Service (LDBSVWS), subscribed to as an API product on the Rail Data Marketplace, returns the same live data legitimately as plain JSON over HTTPS. A free API key is required (see section 9).
 2. **Server-side fetch.** The API key must never reach the browser. React calls our PHP REST API with Axios, the PHP API calls Darwin and caches the result.
-3. **Two sections per tab:** Morning (before 09:00) and Afternoon (after 16:00). See the limitation in section 5.
+3. **Two sections per tab:** Morning arrivals into Exeter St David's (before 09:00, students travelling in to college) and Afternoon departures from it (after 16:00, students travelling home). See the limitation in section 5.
 4. **Kiosk behaviour:** tabs auto-rotate, with a visible progress indicator, and a click or touch pauses rotation briefly.
 5. **Hosting:** Hostinger runs the PHP API and the built React app. The Pi only runs a browser.
 
@@ -62,7 +62,7 @@ exeter-departures/
     components/
       TabBar.jsx
       DestinationPanel.jsx
-      SectionGroup.jsx      "Morning" or "Afternoon" heading plus cards
+      SectionGroup.jsx      "Arrivals" or "Departures" heading plus cards
       ServiceCard.jsx
       StatusBadge.jsx
       Footer.jsx            National Rail credit, licence, last updated
@@ -82,7 +82,7 @@ exeter-departures/
 
 Darwin departure boards look ahead a maximum of 120 minutes (`timeWindow`), and `timeOffset` can shift that window by up to 119 minutes either way. That means a live board cannot show 16:00 trains at 08:00. The design handles this honestly:
 
-- Each tab has two sections, **Before 09:00** and **After 16:00**.
+- Each tab has two sections, **Arrivals before 09:00** (trains from the tab's town arriving at Exeter St David's) and **Departures after 16:00** (trains from Exeter St David's to the tab's town).
 - A section fills with live services when its time falls inside the live window. Otherwise it shows a calm placeholder such as "Evening services appear from 14:00".
 - Behaviour by clock time, all configurable in `.config.json`:
   - Up to 09:00: Morning section live, Afternoon placeholder.
@@ -92,9 +92,12 @@ Darwin departure boards look ahead a maximum of 120 minutes (`timeWindow`), and 
 
 ### Normalised service object (API output)
 
+Two shapes share one `services` array, told apart by `direction`. Departure services (afternoon):
+
 ```json
 {
   "id": "rid from Darwin",
+  "direction": "departure",
   "scheduledDeparture": "07:42",
   "expectedDeparture": "07:49",
   "status": "ontime",
@@ -111,6 +114,33 @@ Darwin departure boards look ahead a maximum of 120 minutes (`timeWindow`), and 
   "durationMinutes": 37,
   "stopsBetween": 4,
   "callingPoints": ["St Thomas", "Newton Abbot"],
+  "callingAt": [{ "name": "St Thomas", "isTabDestination": false }],
+  "section": "afternoon"
+}
+```
+
+Arrival services (morning) describe the train's arrival at Exeter St David's. `originStation` is where the train started, which may be beyond the tab's town, mirroring `finalDestination`. `departureFromOrigin` is the time it leaves the tab's town. Arrival cards do not carry `callingAt`.
+
+```json
+{
+  "id": "rid from Darwin",
+  "direction": "arrival",
+  "scheduledArrival": "08:19",
+  "expectedArrival": "08:26",
+  "status": "ontime",
+  "minutesLate": 7,
+  "cancelled": false,
+  "cancelReason": null,
+  "delayReason": null,
+  "platform": "4",
+  "platformConfirmed": true,
+  "originStation": "Penzance",
+  "operator": "Great Western Railway",
+  "operatorCode": "GW",
+  "departureFromOrigin": "07:42",
+  "durationMinutes": 37,
+  "stopsBetween": 4,
+  "callingPoints": ["Totnes", "Newton Abbot"],
   "section": "morning"
 }
 ```
@@ -166,6 +196,17 @@ require_once __DIR__ . '/config.php';
    - **Final destination.** The last location of the service, which may be beyond the tab station.
    - **Platform.** Blank values become `null` and the frontend shows "TBC".
 5. Sort by scheduled departure, tag each with `section`, store in cache, return.
+
+#### Arrival direction (morning)
+
+The subscription does not route Darwin's arrivals-board operations (`GetArrBoardWithDetails` and variants return HTTP 500 "Unable to route the message to a Target Endpoint"). The same data is obtained from the other end: call `GetDepBoardWithDetails` with `crs` = the tab destination, `filterCrs` = `EXD`, `filterType` = `to`. The `subsequentLocations` entry for `EXD` carries `sta`, `eta`, `ata` and `platform`, which are the arrival time and platform at college.
+
+- `scheduledArrival` / `expectedArrival` come from that entry; status, `minutesLate` and `delayReason` are computed exactly as for departures, using the arrival times.
+- `departureFromOrigin` is the service's own `std` at the tab town; `durationMinutes` is the expected arrival minus that.
+- `originStation` is the last entry of the service's `origin` array.
+- `section` is decided from the scheduled arrival time.
+
+Both boards are fetched on every cache miss, each in its own try/catch, and merged into one `services` array. If only one succeeds the response is still returned, with the other direction empty. Only if both fail does the stale-cache or 502 rule below apply.
 6. On Darwin failure, return the last cached copy with `stale: true` and HTTP 200, or HTTP 502 with a clear JSON error if there is none.
 
 ### 6.3 Other files
@@ -177,7 +218,7 @@ require_once __DIR__ . '/config.php';
 
 ### 6.4 Rate limits and politeness
 
-Five destinations polled every 30 seconds from one Pi is about 10 upstream calls a minute. Because the server caches, the call count stays the same however many browsers connect. Keep `cacheSeconds` at 30 or more.
+Five destinations polled every 30 seconds from one Pi is about 20 upstream calls a minute, since each cache miss makes two calls (arrivals board and departures board). Because the server caches, the call count stays the same however many browsers connect. Keep `cacheSeconds` at 30 or more.
 
 ## 7. Configuration (`.config.json`)
 
@@ -220,7 +261,7 @@ The frontend must not read this file directly over HTTP — it stays blocked by 
 
 - **Header:** "Trains from Exeter St David's", live clock (large), last updated time.
 - **Tab bar:** five large tabs, active tab highlighted, thin progress bar under the bar showing time until the next rotation. A small "Paused" label when a user has interacted.
-- **Body:** two stacked groups, "Before 09:00" and "After 16:00", each a responsive grid of cards.
+- **Body:** two stacked groups, "Arrivals before 09:00" and "Departures after 16:00", each a responsive grid of cards.
 - **Footer:** "Train information from National Rail" with a link to nationalrail.co.uk, plus a short licence line.
 
 ### 8.2 ServiceCard content (the requested fields)

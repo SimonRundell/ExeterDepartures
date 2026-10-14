@@ -1,6 +1,6 @@
 # Task log: reverse the morning section to show arrivals
 
-**Status: implementation done, verification and docs not finished. Paused mid-task on request.**
+**Status: complete (2026-10-14). Arrival-direction tests, DESIGN.md and browser/live verification all done.**
 
 ## The ask
 
@@ -78,7 +78,14 @@ $board = fetchDepartureBoard($config, "EXM", "EXD", 3);
   direction; the new `normaliseArrivalService()`/`normaliseArrivalBoard()` have no PHP test
   coverage yet (task #20, not started).
 
-## What's NOT done yet
+## Completed after the pause
+
+- `tests/normalise_test.php` now covers the arrival direction (new `api/fixtures/board_arrivals.json`): lateness across midnight, `departureFromOrigin`, `originStation`, cancelled, no platform, delay reason, sorting. 39 checks pass.
+- `DESIGN.md` updated: sections, both service shapes, arrival query, 2x upstream calls.
+- Verified in the browser with `?mock=1` (morning shows arrival cards) and against live Darwin (`dest=PLY` returned 5 arrivals and 5 departures).
+- Still open: a `callingAt` list for arrival cards (not requested).
+
+## Original not-done list (now resolved except the last item)
 
 1. **`tests/normalise_test.php`** needs cases for the arrival direction (new fixture data or a
    second fixture file, covering: arrival status/lateness from `sta`/`eta`, `departureFromOrigin`,
