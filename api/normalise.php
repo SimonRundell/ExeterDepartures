@@ -195,6 +195,7 @@ function normaliseService(array $svc, string $destCrs, array $config): array
         'stopsBetween' => $reached ? count($between) : null,
         'callingPoints' => $between,
         'callingAt' => $callingAt,
+        'direction' => 'departure',
         'section' => sectionFor($std, $config['windows']),
     ];
 }
@@ -216,6 +217,107 @@ function normaliseBoard(array $board, array $dest, array $config): array
     $services = [];
     foreach ($raw as $svc) {
         $services[] = normaliseService($svc, $dest['crs'], $config);
+    }
+    $messages = [];
+    foreach ($board['nrccMessages'] ?? [] as $msg) {
+        $messages[] = trim(strip_tags(html_entity_decode((string) ($msg['xhtmlMessage'] ?? ''))));
+    }
+    return ['services' => $services, 'messages' => $messages];
+}
+
+/**
+ * Normalise one Darwin service entry queried as a departure board FROM the
+ * tab destination, used to build the "arriving at the origin" direction.
+ *
+ * Our Rail Data Marketplace subscription only exposes departure-board
+ * operations (GetDepBoardWithDetails) — GetArrBoardWithDetails isn't
+ * routable on it. The same journey is available by querying departures
+ * from the tab's town filtered to our origin station, and reading the
+ * origin's own sta/eta/platform out of that service's subsequentLocations.
+ *
+ * @param array  $svc       The decoded service object, queried from the tab town.
+ * @param string $originCrs CRS of our origin station (e.g. EXD).
+ * @param array  $config    Validated config.
+ * @return array The normalised service, direction 'arrival'.
+ */
+function normaliseArrivalService(array $svc, string $originCrs, array $config): array
+{
+    $townDeparture = parseDarwinTime($svc['std'] ?? null);
+    $cancelled = !empty($svc['isCancelled']);
+
+    $locations = $svc['subsequentLocations'] ?? [];
+    $sta = null;
+    $eta = null;
+    $ata = null;
+    $platform = '';
+    $platformHidden = false;
+    $between = [];
+    $reached = false;
+    foreach ($locations as $loc) {
+        if (!$reached && strcasecmp((string) ($loc['crs'] ?? ''), $originCrs) === 0) {
+            $sta = parseDarwinTime($loc['sta'] ?? null);
+            $eta = parseDarwinTime($loc['eta'] ?? null);
+            $ata = parseDarwinTime($loc['ata'] ?? null);
+            $platform = trim((string) ($loc['platform'] ?? ''));
+            $platformHidden = !empty($loc['platformIsHidden']);
+            $reached = true;
+            continue;
+        }
+        if (!$reached && isPublicStop($loc)) {
+            $between[] = (string) $loc['locationName'];
+        }
+    }
+    if (!$reached) {
+        $between = [];
+    }
+
+    $status = computeStatus($sta, $eta, $ata, $cancelled);
+    $duration = ($townDeparture !== null && $status['expected'] !== null)
+        ? minutesDiff($townDeparture, $status['expected'])
+        : null;
+
+    $origins = $svc['origin'] ?? [];
+    $originName = $origins ? (string) (end($origins)['locationName'] ?? '') : '';
+
+    return [
+        'id' => (string) ($svc['rid'] ?? $svc['uid'] ?? $svc['trainid'] ?? ''),
+        'direction' => 'arrival',
+        'scheduledArrival' => formatHm($sta),
+        'expectedArrival' => formatHm($status['expected']),
+        'status' => $status['status'],
+        'minutesLate' => $status['minutesLate'],
+        'cancelled' => $status['status'] === 'cancelled',
+        'cancelReason' => reasonText($svc['cancelReason'] ?? null),
+        'delayReason' => reasonText($svc['delayReason'] ?? null),
+        'platform' => $platform !== '' ? $platform : null,
+        'platformConfirmed' => $platform !== '' && !$platformHidden,
+        'originStation' => $originName,
+        'operator' => (string) ($svc['operator'] ?? ''),
+        'operatorCode' => (string) ($svc['operatorCode'] ?? ''),
+        'departureFromOrigin' => formatHm($townDeparture),
+        'durationMinutes' => $duration,
+        'stopsBetween' => $reached ? count($between) : null,
+        'callingPoints' => $between,
+        'section' => sectionFor($sta, $config['windows']),
+    ];
+}
+
+/**
+ * Normalise a whole board into arrival-direction services (see
+ * normaliseArrivalService).
+ *
+ * @param array  $board     Decoded StationBoardWithDetails object, queried from the tab town.
+ * @param string $originCrs CRS of our origin station.
+ * @param array  $config    Validated config.
+ * @return array Response body (services sorted, plus NRCC messages).
+ */
+function normaliseArrivalBoard(array $board, string $originCrs, array $config): array
+{
+    $raw = $board['trainServices'] ?? [];
+    usort($raw, fn(array $a, array $b): int => strcmp((string) ($a['std'] ?? ''), (string) ($b['std'] ?? '')));
+    $services = [];
+    foreach ($raw as $svc) {
+        $services[] = normaliseArrivalService($svc, $originCrs, $config);
     }
     $messages = [];
     foreach ($board['nrccMessages'] ?? [] as $msg) {

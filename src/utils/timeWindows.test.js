@@ -4,9 +4,9 @@ import { buildSections, getMode } from './timeWindows.js'
 const windows = { morningEnd: '09:00', afternoonStart: '16:00', afternoonLiveFrom: '14:00' }
 const at = (h, m = 0) => new Date(2026, 9, 12, h, m)
 const services = [
-  { id: 'a', section: 'morning' },
-  { id: 'b', section: 'other' },
-  { id: 'c', section: 'afternoon' },
+  { id: 'a', section: 'morning', direction: 'arrival' },
+  { id: 'b', section: 'other', direction: 'departure' },
+  { id: 'c', section: 'afternoon', direction: 'departure' },
 ]
 
 describe('getMode', () => {

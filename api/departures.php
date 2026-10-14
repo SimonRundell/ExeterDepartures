@@ -2,8 +2,11 @@
 /**
  * GET /api/departures.php?dest=EXM
  *
- * Returns normalised departures from the origin station to a whitelisted
- * destination, cached on the server. Add &mock=1 for fixture data.
+ * Returns normalised services between the origin station and a whitelisted
+ * destination, cached on the server. Two directions are merged: arrivals
+ * into the origin from the destination (morning, the college commute in)
+ * and departures from the origin to the destination (afternoon, going
+ * home). Add &mock=1 for fixture data.
  *
  * @license CC BY-NC-SA 4.0
  */
@@ -60,16 +63,36 @@ if (empty($config['darwin']['apiKey']) || $config['darwin']['apiKey'] === 'REPLA
     failJson(500, 'Server configuration error.');
 }
 
+$originCrs = $config['origin']['crs'];
+
+$arrivalBody = null;
 try {
-    $board = fetchDepartureBoard($config, $config['origin']['crs'], $dest['crs'], 9);
-    $body = normaliseBoard($board, $dest, $config);
-    cacheWrite($key, $body);
-    echo json_encode(envelope($dest, $body, false, false, time()));
+    $arrivalBoard = fetchDepartureBoard($config, $dest['crs'], $originCrs, 9);
+    $arrivalBody = normaliseArrivalBoard($arrivalBoard, $originCrs, $config);
 } catch (Throwable $e) {
-    error_log('departures.php: ' . $e->getMessage());
+    error_log('departures.php (arrivals from ' . $dest['crs'] . '): ' . $e->getMessage());
+}
+
+$departureBody = null;
+try {
+    $departureBoard = fetchDepartureBoard($config, $originCrs, $dest['crs'], 9);
+    $departureBody = normaliseBoard($departureBoard, $dest, $config);
+} catch (Throwable $e) {
+    error_log('departures.php (departures to ' . $dest['crs'] . '): ' . $e->getMessage());
+}
+
+if ($arrivalBody === null && $departureBody === null) {
     if ($entry !== null) {
         echo json_encode(envelope($dest, $entry['data'], true, true, (int) $entry['time']));
     } else {
         failJson(502, 'Train data is temporarily unavailable.');
     }
+    exit();
 }
+
+$body = [
+    'services' => array_merge($arrivalBody['services'] ?? [], $departureBody['services'] ?? []),
+    'messages' => array_values(array_unique(array_merge($arrivalBody['messages'] ?? [], $departureBody['messages'] ?? []))),
+];
+cacheWrite($key, $body);
+echo json_encode(envelope($dest, $body, false, false, time()));

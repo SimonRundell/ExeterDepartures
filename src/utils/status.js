@@ -13,7 +13,9 @@ export const SEVERE_LATE_MINUTES = 10
  */
 
 /**
- * Work out how a service's status should be displayed.
+ * Work out how a service's status should be displayed. Works for both
+ * directions: departures (scheduledDeparture/expectedDeparture) and
+ * arrivals (scheduledArrival/expectedArrival).
  * @param {object} service - Normalised service from the API.
  * @param {number} [lateThreshold=2] - Minutes late at or below which a train counts as on time.
  * @returns {StatusInfo} Display information for the badge.
@@ -22,21 +24,26 @@ export function getStatusInfo(service, lateThreshold = 2) {
   if (service.cancelled || service.status === 'cancelled') {
     return { kind: 'cancelled', label: 'Cancelled', icon: '✕', detail: service.cancelReason ?? null }
   }
-  if (service.status === 'delayed') {
-    return { kind: 'delayed', label: 'Delayed', icon: '…', detail: service.delayReason ?? null }
-  }
+
+  const scheduled = service.scheduledDeparture ?? service.scheduledArrival
+  const expected = service.expectedDeparture ?? service.expectedArrival
   const late = service.minutesLate ?? 0
+
+  if (late <= lateThreshold && service.delayReason) {
+    // Darwin has flagged a delay but hasn't published a revised time yet.
+    return { kind: 'delayed', label: 'Delayed', icon: '…', detail: service.delayReason }
+  }
   if (late > lateThreshold) {
     const kind = late >= SEVERE_LATE_MINUTES ? 'verylate' : 'late'
     return {
       kind,
       label: `Late by ${late} min${late === 1 ? '' : 's'}`,
       icon: '!',
-      detail: `Due at ${service.expectedDeparture}`,
+      detail: `Due at ${expected}`,
     }
   }
-  if (service.expectedDeparture && service.expectedDeparture !== service.scheduledDeparture) {
-    return { kind: 'due', label: `Due at ${service.expectedDeparture}`, icon: '◷', detail: null }
+  if (expected && expected !== scheduled) {
+    return { kind: 'due', label: `Due at ${expected}`, icon: '◷', detail: null }
   }
   return { kind: 'ontime', label: 'On time', icon: '✓', detail: null }
 }

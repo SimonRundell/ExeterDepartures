@@ -20,5 +20,18 @@ describe('getStatusInfo', () => {
     const info = getStatusInfo({ ...base, cancelled: true, status: 'cancelled', cancelReason: 'Crew' })
     expect(info).toMatchObject({ kind: 'cancelled', detail: 'Crew' })
   })
-  it('delayed has no time', () => expect(getStatusInfo({ ...base, status: 'delayed' }).label).toBe('Delayed'))
+  it('delayed has no time', () => {
+    const info = getStatusInfo({ ...base, delayReason: 'Signalling fault' })
+    expect(info).toMatchObject({ kind: 'delayed', label: 'Delayed', detail: 'Signalling fault' })
+  })
+  it('arrival direction uses scheduledArrival/expectedArrival', () => {
+    const arrival = {
+      status: 'ontime',
+      cancelled: false,
+      minutesLate: 7,
+      scheduledArrival: '08:19',
+      expectedArrival: '08:26',
+    }
+    expect(getStatusInfo(arrival)).toMatchObject({ kind: 'late', label: 'Late by 7 mins', detail: 'Due at 08:26' })
+  })
 })

@@ -44,20 +44,21 @@ const EMPTY = 'No direct trains in this window'
  */
 export function buildSections(services, now, windows) {
   const mode = getMode(now, windows)
-  const morning = { key: 'morning', title: `Before ${windows.morningEnd}`, services: [], placeholder: null, emptyMessage: EMPTY }
-  const afternoon = { key: 'afternoon', title: `After ${windows.afternoonStart}`, services: [], placeholder: null, emptyMessage: EMPTY }
+  const morning = { key: 'morning', title: `Arrivals before ${windows.morningEnd}`, services: [], placeholder: null, emptyMessage: EMPTY }
+  const afternoon = { key: 'afternoon', title: `Departures after ${windows.afternoonStart}`, services: [], placeholder: null, emptyMessage: EMPTY }
   const sections = [morning, afternoon]
 
   if (mode === 'morning') {
-    morning.services = services.filter((s) => s.section === 'morning')
+    morning.services = services.filter((s) => s.section === 'morning' && s.direction === 'arrival')
     afternoon.placeholder = `Afternoon services appear from ${windows.afternoonLiveFrom}`
   } else if (mode === 'afternoon') {
-    afternoon.services = services.filter((s) => s.section === 'afternoon')
+    afternoon.services = services.filter((s) => s.section === 'afternoon' && s.direction === 'departure')
     morning.placeholder = 'Morning services appear again in the early hours'
   } else {
     morning.placeholder = 'Morning services appear again in the early hours'
     afternoon.placeholder = `Afternoon services appear from ${windows.afternoonLiveFrom}`
-    sections.push({ key: 'next', title: 'Next trains', services: services.slice(0, 3), placeholder: null, emptyMessage: EMPTY })
+    const next = services.filter((s) => s.direction === 'departure').slice(0, 3)
+    sections.push({ key: 'next', title: 'Next trains', services: next, placeholder: null, emptyMessage: EMPTY })
   }
   return sections
 }

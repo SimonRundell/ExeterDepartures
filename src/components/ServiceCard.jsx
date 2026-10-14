@@ -23,6 +23,10 @@ function describeStops(stops) {
  */
 export default function ServiceCard({ service, destinationName, lateThreshold }) {
   const info = getStatusInfo(service, lateThreshold)
+  const isArrival = service.direction === 'arrival'
+  const primaryTime = isArrival ? service.scheduledArrival : service.scheduledDeparture
+  const secondaryTime = isArrival ? service.departureFromOrigin : service.arrivalAtTabDestination
+  const otherStation = isArrival ? service.originStation : service.finalDestination
   const journey = [
     service.durationMinutes != null ? `${service.durationMinutes} min` : null,
     describeStops(service.stopsBetween),
@@ -32,14 +36,14 @@ export default function ServiceCard({ service, destinationName, lateThreshold })
     <article className={`card card--${info.kind}`}>
       <header className="card__top">
         <p className="card__time">
-          <span className="visually-hidden">Departs </span>
-          <span className={info.kind === 'cancelled' ? 'is-struck' : undefined}>{service.scheduledDeparture}</span>
+          <span className="visually-hidden">{isArrival ? 'Arrives ' : 'Departs '}</span>
+          <span className={info.kind === 'cancelled' ? 'is-struck' : undefined}>{primaryTime}</span>
         </p>
-        {service.arrivalAtTabDestination && (
+        {secondaryTime && (
           <p className="card__arrival">
-            <span className="visually-hidden">Arrives {destinationName} </span>
-            <span aria-hidden="true">arr. </span>
-            {service.arrivalAtTabDestination}
+            <span className="visually-hidden">{isArrival ? `Departs ${destinationName} ` : `Arrives ${destinationName} `}</span>
+            <span aria-hidden="true">{isArrival ? 'dep. ' : 'arr. '}</span>
+            {secondaryTime}
           </p>
         )}
       </header>
@@ -53,8 +57,8 @@ export default function ServiceCard({ service, destinationName, lateThreshold })
           <dd className="card__platform">{service.platform ?? 'TBC'}</dd>
         </div>
         <div className="card__fact card__fact--to">
-          <dt>To</dt>
-          <dd>{service.finalDestination}</dd>
+          <dt>{isArrival ? 'From' : 'To'}</dt>
+          <dd>{otherStation}</dd>
         </div>
         <div className="card__fact card__fact--journey">
           <dt>Journey</dt>
